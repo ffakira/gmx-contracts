@@ -1,3 +1,5 @@
+![Solidity unit test](https://github.com/ffakira/gmx-contracts/actions/workflows/hardhat.yml/badge.svg)
+
 # GMX Contracts
 Contracts for GMX.
 
