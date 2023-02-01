@@ -2,15 +2,12 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-
 import "../access/Governable.sol";
 import "../peripherals/interfaces/ITimelock.sol";
 
 import "./interfaces/IReferralStorage.sol";
 
 contract ReferralStorage is Governable, IReferralStorage {
-    using SafeMath for uint256;
 
     struct Tier {
         uint256 totalRebate; // e.g. 2400 for 24%

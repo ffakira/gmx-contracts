@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -10,8 +9,6 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "../peripherals/interfaces/ITimelock.sol";
 
 contract TokenManager is ReentrancyGuard {
-    using SafeMath for uint256;
-
     bool public isInitialized;
 
     uint256 public actionsNonce;

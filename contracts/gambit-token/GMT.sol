@@ -2,14 +2,11 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IGMT.sol";
 import "../peripherals/interfaces/ITimelockTarget.sol";
 
 contract GMT is IERC20, IGMT, ITimelockTarget {
-    using SafeMath for uint256;
-
     string public constant name = "Gambit";
     string public constant symbol = "GMT";
     uint8 public constant decimals = 18;
@@ -122,7 +119,8 @@ contract GMT is IERC20, IGMT, ITimelockTarget {
     }
 
     function transferFrom(address _sender, address _recipient, uint256 _amount) external override returns (bool) {
-        uint256 nextAllowance = allowances[_sender][msg.sender].sub(_amount, "GMT: transfer amount exceeds allowance");
+        uint256 nextAllowance = allowances[_sender][msg.sender] - _amount;
+        require(nextAllowance > 0, "GMT: transfer amount exceeds allowance");
         _approve(_sender, msg.sender, nextAllowance);
         _transfer(_sender, _recipient, _amount);
         return true;
@@ -137,8 +135,9 @@ contract GMT is IERC20, IGMT, ITimelockTarget {
             require(!blockedRecipients[_recipient], "GMT: forbidden recipient");
         }
 
-        balances[_sender] = balances[_sender].sub(_amount, "GMT: transfer amount exceeds balance");
-        balances[_recipient] = balances[_recipient].add(_amount);
+        require(balances[_sender] - _amount > 0, "GMT: transfer amount exceeds balance");
+        balances[_sender] = balances[_sender] - _amount;
+        balances[_recipient] = balances[_recipient] + _amount;
 
         emit Transfer(_sender, _recipient,_amount);
     }
@@ -146,8 +145,8 @@ contract GMT is IERC20, IGMT, ITimelockTarget {
     function _mint(address _account, uint256 _amount) private {
         require(_account != address(0), "GMT: mint to the zero address");
 
-        totalSupply = totalSupply.add(_amount);
-        balances[_account] = balances[_account].add(_amount);
+        totalSupply = totalSupply + _amount;
+        balances[_account] = balances[_account] + _amount;
 
         emit Transfer(address(0), _account, _amount);
     }

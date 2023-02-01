@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
@@ -11,8 +10,6 @@ import "./interfaces/IGmxMigrator.sol";
 import "../core/interfaces/IVault.sol";
 
 contract MigrationHandler is ReentrancyGuard {
-    using SafeMath for uint256;
-
     uint256 public constant USDG_PRECISION = 10 ** 18;
 
     bool public isInitialized;
@@ -147,10 +144,10 @@ contract MigrationHandler is ReentrancyGuard {
     ) external onlyAdmin nonReentrant {
         address iouToken = IGmxMigrator(_migrator).iouTokens(_token);
         uint256 iouBalance = IERC20(iouToken).balanceOf(_account);
-        uint256 iouTokenAmount = _usdgAmount.div(2); // each GMX is priced at $2
+        uint256 iouTokenAmount = _usdgAmount / 2; // each GMX is priced at $2
 
         uint256 refunded = refundedAmounts[_account][iouToken];
-        refundedAmounts[_account][iouToken] = refunded.add(iouTokenAmount);
+        refundedAmounts[_account][iouToken] = refunded + iouTokenAmount;
 
         require(refundedAmounts[_account][iouToken] <= iouBalance, "MigrationHandler: refundable amount exceeded");
 

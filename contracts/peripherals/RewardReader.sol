@@ -3,14 +3,11 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "../staking/interfaces/IVester.sol";
 import "../staking/interfaces/IRewardTracker.sol";
 
 contract RewardReader {
-    using SafeMath for uint256;
-
     function getDepositBalances(address _account, address[] memory _depositTokens, address[] memory _rewardTrackers) public view returns (uint256[] memory) {
         uint256[] memory amounts = new uint256[](_rewardTrackers.length);
         for (uint256 i = 0; i < _rewardTrackers.length; i++) {

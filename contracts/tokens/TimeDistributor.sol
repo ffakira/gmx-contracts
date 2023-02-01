@@ -2,14 +2,12 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "./interfaces/IDistributor.sol";
 
 contract TimeDistributor is IDistributor {
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     uint256 public constant DISTRIBUTION_INTERVAL = 1 hours;
@@ -106,7 +104,7 @@ contract TimeDistributor is IDistributor {
         if (_tokensPerInterval == 0) { return 0; }
 
         uint256 intervals = getIntervals(_receiver);
-        uint256 amount = _tokensPerInterval.mul(intervals);
+        uint256 amount = _tokensPerInterval * intervals;
 
         if (IERC20(rewardTokens[_receiver]).balanceOf(address(this)) < amount) { return 0; }
 
@@ -114,11 +112,11 @@ contract TimeDistributor is IDistributor {
     }
 
     function getIntervals(address _receiver) public view returns (uint256) {
-        uint256 timeDiff = block.timestamp.sub(lastDistributionTime[_receiver]);
-        return timeDiff.div(DISTRIBUTION_INTERVAL);
+        uint256 timeDiff = block.timestamp - lastDistributionTime[_receiver];
+        return timeDiff / DISTRIBUTION_INTERVAL;
     }
 
     function _updateLastDistributionTime(address _receiver) private {
-        lastDistributionTime[_receiver] = block.timestamp.div(DISTRIBUTION_INTERVAL).mul(DISTRIBUTION_INTERVAL);
+        lastDistributionTime[_receiver] = block.timestamp / DISTRIBUTION_INTERVAL * DISTRIBUTION_INTERVAL;
     }
 }

@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-
 import "./interfaces/IVaultPriceFeed.sol";
 import "../oracle/interfaces/IPriceFeed.sol";
 import "../oracle/interfaces/ISecondaryPriceFeed.sol";
@@ -11,8 +9,6 @@ import "../oracle/interfaces/IChainlinkFlags.sol";
 import "../amm/interfaces/IPancakePair.sol";
 
 contract VaultPriceFeed is IVaultPriceFeed {
-    using SafeMath for uint256;
-
     uint256 public constant PRICE_PRECISION = 10 ** 30;
     uint256 public constant ONE_USD = PRICE_PRECISION;
     uint256 public constant BASIS_POINTS_DIVISOR = 10000;
@@ -75,7 +71,7 @@ contract VaultPriceFeed is IVaultPriceFeed {
 
     function setAdjustment(address _token, bool _isAdditive, uint256 _adjustmentBps) external override onlyGov {
         require(
-            lastAdjustmentTimings[_token].add(MAX_ADJUSTMENT_INTERVAL) < block.timestamp,
+            lastAdjustmentTimings[_token] + MAX_ADJUSTMENT_INTERVAL < block.timestamp,
             "VaultPriceFeed: adjustment frequency exceeded"
         );
         require(_adjustmentBps <= MAX_ADJUSTMENT_BASIS_POINTS, "invalid _adjustmentBps");
@@ -152,9 +148,9 @@ contract VaultPriceFeed is IVaultPriceFeed {
         if (adjustmentBps > 0) {
             bool isAdditive = isAdjustmentAdditive[_token];
             if (isAdditive) {
-                price = price.mul(BASIS_POINTS_DIVISOR.add(adjustmentBps)).div(BASIS_POINTS_DIVISOR);
+                price = (price * (BASIS_POINTS_DIVISOR + adjustmentBps)) / BASIS_POINTS_DIVISOR;
             } else {
-                price = price.mul(BASIS_POINTS_DIVISOR.sub(adjustmentBps)).div(BASIS_POINTS_DIVISOR);
+                price = (price * (BASIS_POINTS_DIVISOR - adjustmentBps)) / BASIS_POINTS_DIVISOR;
             }
         }
 
@@ -181,7 +177,7 @@ contract VaultPriceFeed is IVaultPriceFeed {
         }
 
         if (strictStableTokens[_token]) {
-            uint256 delta = price > ONE_USD ? price.sub(ONE_USD) : ONE_USD.sub(price);
+            uint256 delta = price > ONE_USD ? price - ONE_USD : ONE_USD - price;
             if (delta <= maxStrictPriceDeviation) {
                 return ONE_USD;
             }
@@ -202,10 +198,10 @@ contract VaultPriceFeed is IVaultPriceFeed {
         uint256 _spreadBasisPoints = spreadBasisPoints[_token];
 
         if (_maximise) {
-            return price.mul(BASIS_POINTS_DIVISOR.add(_spreadBasisPoints)).div(BASIS_POINTS_DIVISOR);
+            return (price * (BASIS_POINTS_DIVISOR + _spreadBasisPoints)) / BASIS_POINTS_DIVISOR;
         }
 
-        return price.mul(BASIS_POINTS_DIVISOR.sub(_spreadBasisPoints)).div(BASIS_POINTS_DIVISOR);
+        return (price * (BASIS_POINTS_DIVISOR - _spreadBasisPoints)) / BASIS_POINTS_DIVISOR;
     }
 
     function getPriceV2(address _token, bool _maximise, bool _includeAmmPrice) public view returns (uint256) {
@@ -220,7 +216,7 @@ contract VaultPriceFeed is IVaultPriceFeed {
         }
 
         if (strictStableTokens[_token]) {
-            uint256 delta = price > ONE_USD ? price.sub(ONE_USD) : ONE_USD.sub(price);
+            uint256 delta = price > ONE_USD ? price - ONE_USD : ONE_USD - price;
             if (delta <= maxStrictPriceDeviation) {
                 return ONE_USD;
             }
@@ -241,10 +237,10 @@ contract VaultPriceFeed is IVaultPriceFeed {
         uint256 _spreadBasisPoints = spreadBasisPoints[_token];
 
         if (_maximise) {
-            return price.mul(BASIS_POINTS_DIVISOR.add(_spreadBasisPoints)).div(BASIS_POINTS_DIVISOR);
+            return (price * (BASIS_POINTS_DIVISOR + _spreadBasisPoints)) / BASIS_POINTS_DIVISOR;
         }
 
-        return price.mul(BASIS_POINTS_DIVISOR.sub(_spreadBasisPoints)).div(BASIS_POINTS_DIVISOR);
+        return (price * (BASIS_POINTS_DIVISOR - _spreadBasisPoints)) / BASIS_POINTS_DIVISOR;
     }
 
     function getAmmPriceV2(address _token, bool _maximise, uint256 _primaryPrice) public view returns (uint256) {
@@ -253,8 +249,8 @@ contract VaultPriceFeed is IVaultPriceFeed {
             return _primaryPrice;
         }
 
-        uint256 diff = ammPrice > _primaryPrice ? ammPrice.sub(_primaryPrice) : _primaryPrice.sub(ammPrice);
-        if (diff.mul(BASIS_POINTS_DIVISOR) < _primaryPrice.mul(spreadThresholdBasisPoints)) {
+        uint256 diff = ammPrice > _primaryPrice ? ammPrice - _primaryPrice : _primaryPrice - ammPrice;
+        if (diff * BASIS_POINTS_DIVISOR < _primaryPrice * spreadThresholdBasisPoints) {
             if (favorPrimaryPrice) {
                 return _primaryPrice;
             }
@@ -333,7 +329,7 @@ contract VaultPriceFeed is IVaultPriceFeed {
         require(price > 0, "VaultPriceFeed: could not fetch price");
         // normalise price precision
         uint256 _priceDecimals = priceDecimals[_token];
-        return price.mul(PRICE_PRECISION).div(10 ** _priceDecimals);
+        return (price * PRICE_PRECISION) / (10 ** _priceDecimals);
     }
 
     function getSecondaryPrice(address _token, uint256 _referencePrice, bool _maximise) public view returns (uint256) {
@@ -352,7 +348,7 @@ contract VaultPriceFeed is IVaultPriceFeed {
             // for ethBnb, reserve0: ETH, reserve1: BNB
             uint256 price1 = getPairPrice(ethBnb, true);
             // this calculation could overflow if (price0 / 10**30) * (price1 / 10**30) is more than 10**17
-            return price0.mul(price1).div(PRICE_PRECISION);
+            return (price0 * price1) / PRICE_PRECISION;
         }
 
         if (_token == btc) {
@@ -360,7 +356,7 @@ contract VaultPriceFeed is IVaultPriceFeed {
             // for btcBnb, reserve0: BTC, reserve1: BNB
             uint256 price1 = getPairPrice(btcBnb, true);
             // this calculation could overflow if (price0 / 10**30) * (price1 / 10**30) is more than 10**17
-            return price0.mul(price1).div(PRICE_PRECISION);
+            return (price0 * price1) / PRICE_PRECISION;
         }
 
         return 0;
@@ -372,9 +368,9 @@ contract VaultPriceFeed is IVaultPriceFeed {
         (uint256 reserve0, uint256 reserve1, ) = IPancakePair(_pair).getReserves();
         if (_divByReserve0) {
             if (reserve0 == 0) { return 0; }
-            return reserve1.mul(PRICE_PRECISION).div(reserve0);
+            return (reserve1 * PRICE_PRECISION) / reserve0;
         }
         if (reserve1 == 0) { return 0; }
-        return reserve0.mul(PRICE_PRECISION).div(reserve1);
+        return (reserve0 * PRICE_PRECISION) / reserve1;
     }
 }

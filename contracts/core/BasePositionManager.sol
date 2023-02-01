@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -21,8 +20,6 @@ import "../peripherals/interfaces/ITimelock.sol";
 import "../referrals/interfaces/IReferralStorage.sol";
 
 contract BasePositionManager is IBasePositionManager, ReentrancyGuard, Governable {
-
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using Address for address payable;
 
@@ -133,12 +130,12 @@ contract BasePositionManager is IBasePositionManager, ReentrancyGuard, Governabl
 
         if (_isLong) {
             uint256 maxGlobalLongSize = maxGlobalLongSizes[_indexToken];
-            if (maxGlobalLongSize > 0 && IVault(vault).guaranteedUsd(_indexToken).add(_sizeDelta) > maxGlobalLongSize) {
+            if (maxGlobalLongSize > 0 && IVault(vault).guaranteedUsd(_indexToken) + _sizeDelta > maxGlobalLongSize) {
                 revert("BasePositionManager: max global longs exceeded");
             }
         } else {
             uint256 maxGlobalShortSize = maxGlobalShortSizes[_indexToken];
-            if (maxGlobalShortSize > 0 && IVault(vault).globalShortSizes(_indexToken).add(_sizeDelta) > maxGlobalShortSize) {
+            if (maxGlobalShortSize > 0 && IVault(vault).globalShortSizes(_indexToken) + _sizeDelta > maxGlobalShortSize) {
                 revert("BasePositionManager: max global shorts exceeded");
             }
         }
@@ -275,10 +272,10 @@ contract BasePositionManager is IBasePositionManager, ReentrancyGuard, Governabl
         );
 
         if (shouldDeductFee) {
-            uint256 afterFeeAmount = _amountIn.mul(BASIS_POINTS_DIVISOR.sub(depositFee)).div(BASIS_POINTS_DIVISOR);
-            uint256 feeAmount = _amountIn.sub(afterFeeAmount);
+            uint256 afterFeeAmount = (_amountIn * (BASIS_POINTS_DIVISOR - depositFee)) / BASIS_POINTS_DIVISOR;
+            uint256 feeAmount = _amountIn - afterFeeAmount;
             address feeToken = _path[_path.length - 1];
-            feeReserves[feeToken] = feeReserves[feeToken].add(feeAmount);
+            feeReserves[feeToken] = feeReserves[feeToken] + feeAmount;
             return afterFeeAmount;
         }
 
@@ -307,13 +304,13 @@ contract BasePositionManager is IBasePositionManager, ReentrancyGuard, Governabl
         // if there is no existing position, do not charge a fee
         if (size == 0) { return false; }
 
-        uint256 nextSize = size.add(_sizeDelta);
+        uint256 nextSize = size + _sizeDelta;
         uint256 collateralDelta = _vault.tokenToUsdMin(collateralToken, _amountIn);
-        uint256 nextCollateral = collateral.add(collateralDelta);
+        uint256 nextCollateral = collateral + collateralDelta;
 
-        uint256 prevLeverage = size.mul(BASIS_POINTS_DIVISOR).div(collateral);
+        uint256 prevLeverage = (size * BASIS_POINTS_DIVISOR) / collateral;
         // allow for a maximum of a increasePositionBufferBps decrease since there might be some swap fees taken from the collateral
-        uint256 nextLeverage = nextSize.mul(BASIS_POINTS_DIVISOR + increasePositionBufferBps).div(nextCollateral);
+        uint256 nextLeverage = (nextSize * (BASIS_POINTS_DIVISOR + increasePositionBufferBps)) / nextCollateral;
 
         // deduct a fee if the leverage is decreased
         return nextLeverage < prevLeverage;

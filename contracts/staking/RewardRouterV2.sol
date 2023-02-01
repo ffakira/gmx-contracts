@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -17,7 +16,6 @@ import "../core/interfaces/IGlpManager.sol";
 import "../access/Governable.sol";
 
 contract RewardRouterV2 is IRewardRouterV2, ReentrancyGuard, Governable {
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using Address for address payable;
 
@@ -233,7 +231,7 @@ contract RewardRouterV2 is IRewardRouterV2, ReentrancyGuard, Governable {
         if (_shouldClaimGmx) {
             uint256 gmxAmount0 = IVester(gmxVester).claimForAccount(account, account);
             uint256 gmxAmount1 = IVester(glpVester).claimForAccount(account, account);
-            gmxAmount = gmxAmount0.add(gmxAmount1);
+            gmxAmount = gmxAmount0 + gmxAmount1;
         }
 
         if (_shouldStakeGmx && gmxAmount > 0) {
@@ -244,7 +242,7 @@ contract RewardRouterV2 is IRewardRouterV2, ReentrancyGuard, Governable {
         if (_shouldClaimEsGmx) {
             uint256 esGmxAmount0 = IRewardTracker(stakedGmxTracker).claimForAccount(account, account);
             uint256 esGmxAmount1 = IRewardTracker(stakedGlpTracker).claimForAccount(account, account);
-            esGmxAmount = esGmxAmount0.add(esGmxAmount1);
+            esGmxAmount = esGmxAmount0 + esGmxAmount1;
         }
 
         if (_shouldStakeEsGmx && esGmxAmount > 0) {
@@ -263,7 +261,7 @@ contract RewardRouterV2 is IRewardRouterV2, ReentrancyGuard, Governable {
                 uint256 weth0 = IRewardTracker(feeGmxTracker).claimForAccount(account, address(this));
                 uint256 weth1 = IRewardTracker(feeGlpTracker).claimForAccount(account, address(this));
 
-                uint256 wethAmount = weth0.add(weth1);
+                uint256 wethAmount = weth0 + weth1;
                 IWETH(weth).withdraw(wethAmount);
 
                 payable(account).sendValue(wethAmount);
@@ -412,7 +410,7 @@ contract RewardRouterV2 is IRewardRouterV2, ReentrancyGuard, Governable {
 
             uint256 stakedBnGmx = IRewardTracker(feeGmxTracker).depositBalances(_account, bnGmx);
             if (stakedBnGmx > 0) {
-                uint256 reductionAmount = stakedBnGmx.mul(_amount).div(balance);
+                uint256 reductionAmount = stakedBnGmx * _amount / balance;
                 IRewardTracker(feeGmxTracker).unstakeForAccount(_account, bnGmx, reductionAmount, _account);
                 IMintable(bnGmx).burn(_account, reductionAmount);
             }

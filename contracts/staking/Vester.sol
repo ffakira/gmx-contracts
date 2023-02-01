@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -13,7 +12,6 @@ import "../tokens/interfaces/IMintable.sol";
 import "../access/Governable.sol";
 
 contract Vester is IVester, IERC20, ReentrancyGuard, Governable {
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     string public name;
@@ -114,7 +112,7 @@ contract Vester is IVester, IERC20, ReentrancyGuard, Governable {
 
         uint256 claimedAmount = cumulativeClaimAmounts[account];
         uint256 balance = balances[account];
-        uint256 totalVested = balance.add(claimedAmount);
+        uint256 totalVested = balance + claimedAmount;
         require(totalVested > 0, "Vester: vested amount is zero");
 
         if (hasPairToken()) {
@@ -142,7 +140,7 @@ contract Vester is IVester, IERC20, ReentrancyGuard, Governable {
         uint256 transferredCumulativeReward = transferredCumulativeRewards[_sender];
         uint256 cumulativeReward = IRewardTracker(rewardTracker).cumulativeRewards(_sender);
 
-        transferredCumulativeRewards[_receiver] = transferredCumulativeReward.add(cumulativeReward);
+        transferredCumulativeRewards[_receiver] = transferredCumulativeReward + cumulativeReward;
         cumulativeRewardDeductions[_sender] = cumulativeReward;
         transferredCumulativeRewards[_sender] = 0;
 
@@ -171,9 +169,9 @@ contract Vester is IVester, IERC20, ReentrancyGuard, Governable {
     }
 
     function claimable(address _account) public override view returns (uint256) {
-        uint256 amount = cumulativeClaimAmounts[_account].sub(claimedAmounts[_account]);
+        uint256 amount = cumulativeClaimAmounts[_account] - claimedAmounts[_account];
         uint256 nextClaimable = _getNextClaimableAmount(_account);
-        return amount.add(nextClaimable);
+        return amount + nextClaimable;
     }
 
     function getMaxVestableAmount(address _account) public override view returns (uint256) {
@@ -182,7 +180,7 @@ contract Vester is IVester, IERC20, ReentrancyGuard, Governable {
         uint256 transferredCumulativeReward = transferredCumulativeRewards[_account];
         uint256 bonusReward = bonusRewards[_account];
         uint256 cumulativeReward = IRewardTracker(rewardTracker).cumulativeRewards(_account);
-        uint256 maxVestableAmount = cumulativeReward.add(transferredCumulativeReward).add(bonusReward);
+        uint256 maxVestableAmount = cumulativeReward + transferredCumulativeReward + bonusReward;
 
         uint256 cumulativeRewardDeduction = cumulativeRewardDeductions[_account];
 
@@ -190,24 +188,20 @@ contract Vester is IVester, IERC20, ReentrancyGuard, Governable {
             return 0;
         }
 
-        return maxVestableAmount.sub(cumulativeRewardDeduction);
+        return maxVestableAmount - cumulativeRewardDeduction;
     }
 
     function getCombinedAverageStakedAmount(address _account) public override view returns (uint256) {
         uint256 cumulativeReward = IRewardTracker(rewardTracker).cumulativeRewards(_account);
         uint256 transferredCumulativeReward = transferredCumulativeRewards[_account];
-        uint256 totalCumulativeReward = cumulativeReward.add(transferredCumulativeReward);
+        uint256 totalCumulativeReward = cumulativeReward + transferredCumulativeReward;
         if (totalCumulativeReward == 0) { return 0; }
 
         uint256 averageStakedAmount = IRewardTracker(rewardTracker).averageStakedAmounts(_account);
         uint256 transferredAverageStakedAmount = transferredAverageStakedAmounts[_account];
 
-        return averageStakedAmount
-            .mul(cumulativeReward)
-            .div(totalCumulativeReward)
-            .add(
-                transferredAverageStakedAmount.mul(transferredCumulativeReward).div(totalCumulativeReward)
-            );
+        return averageStakedAmount * cumulativeReward / totalCumulativeReward + 
+                transferredAverageStakedAmount * transferredCumulativeReward / totalCumulativeReward;
     }
 
     function getPairAmount(address _account, uint256 _esAmount) public view returns (uint256) {
@@ -223,7 +217,7 @@ contract Vester is IVester, IERC20, ReentrancyGuard, Governable {
             return 0;
         }
 
-        return _esAmount.mul(combinedAverageStakedAmount).div(maxVestableAmount);
+        return _esAmount * combinedAverageStakedAmount / maxVestableAmount;
     }
 
     function hasRewardTracker() public view returns (bool) {
@@ -235,7 +229,7 @@ contract Vester is IVester, IERC20, ReentrancyGuard, Governable {
     }
 
     function getTotalVested(address _account) public view returns (uint256) {
-        return balances[_account].add(cumulativeClaimAmounts[_account]);
+        return balances[_account] + cumulativeClaimAmounts[_account];
     }
 
     function balanceOf(address _account) public view override returns (uint256) {
@@ -265,14 +259,14 @@ contract Vester is IVester, IERC20, ReentrancyGuard, Governable {
     function getVestedAmount(address _account) public override view returns (uint256) {
         uint256 balance = balances[_account];
         uint256 cumulativeClaimAmount = cumulativeClaimAmounts[_account];
-        return balance.add(cumulativeClaimAmount);
+        return balance + cumulativeClaimAmount;
     }
 
     function _mint(address _account, uint256 _amount) private {
         require(_account != address(0), "Vester: mint to the zero address");
 
-        totalSupply = totalSupply.add(_amount);
-        balances[_account] = balances[_account].add(_amount);
+        totalSupply = totalSupply + _amount;
+        balances[_account] = balances[_account] + _amount;
 
         emit Transfer(address(0), _account, _amount);
     }
@@ -280,8 +274,8 @@ contract Vester is IVester, IERC20, ReentrancyGuard, Governable {
     function _mintPair(address _account, uint256 _amount) private {
         require(_account != address(0), "Vester: mint to the zero address");
 
-        pairSupply = pairSupply.add(_amount);
-        pairAmounts[_account] = pairAmounts[_account].add(_amount);
+        pairSupply = pairSupply + _amount;
+        pairAmounts[_account] = pairAmounts[_account] + _amount;
 
         emit PairTransfer(address(0), _account, _amount);
     }
@@ -289,8 +283,9 @@ contract Vester is IVester, IERC20, ReentrancyGuard, Governable {
     function _burn(address _account, uint256 _amount) private {
         require(_account != address(0), "Vester: burn from the zero address");
 
-        balances[_account] = balances[_account].sub(_amount, "Vester: burn amount exceeds balance");
-        totalSupply = totalSupply.sub(_amount);
+        require(balances[_account] - _amount > 0, "Vester: burn amount exceeds balance");
+        balances[_account] = balances[_account] - _amount;
+        totalSupply = totalSupply - _amount;
 
         emit Transfer(_account, address(0), _amount);
     }
@@ -298,8 +293,9 @@ contract Vester is IVester, IERC20, ReentrancyGuard, Governable {
     function _burnPair(address _account, uint256 _amount) private {
         require(_account != address(0), "Vester: burn from the zero address");
 
-        pairAmounts[_account] = pairAmounts[_account].sub(_amount, "Vester: burn amount exceeds balance");
-        pairSupply = pairSupply.sub(_amount);
+        require(pairAmounts[_account] - _amount > 0, "Vester: burn amount exceeds balance");
+        pairAmounts[_account] = pairAmounts[_account] - _amount;
+        pairSupply = pairSupply - _amount;
 
         emit PairTransfer(_account, address(0), _amount);
     }
@@ -317,7 +313,7 @@ contract Vester is IVester, IERC20, ReentrancyGuard, Governable {
             uint256 pairAmount = pairAmounts[_account];
             uint256 nextPairAmount = getPairAmount(_account, balances[_account]);
             if (nextPairAmount > pairAmount) {
-                uint256 pairAmountDiff = nextPairAmount.sub(pairAmount);
+                uint256 pairAmountDiff = nextPairAmount - pairAmount;
                 IERC20(pairToken).safeTransferFrom(_account, address(this), pairAmountDiff);
                 _mintPair(_account, pairAmountDiff);
             }
@@ -341,19 +337,19 @@ contract Vester is IVester, IERC20, ReentrancyGuard, Governable {
 
         // transfer claimableAmount from balances to cumulativeClaimAmounts
         _burn(_account, amount);
-        cumulativeClaimAmounts[_account] = cumulativeClaimAmounts[_account].add(amount);
+        cumulativeClaimAmounts[_account] = cumulativeClaimAmounts[_account] + amount;
 
         IMintable(esToken).burn(address(this), amount);
     }
 
     function _getNextClaimableAmount(address _account) private view returns (uint256) {
-        uint256 timeDiff = block.timestamp.sub(lastVestingTimes[_account]);
+        uint256 timeDiff = block.timestamp - lastVestingTimes[_account];
 
         uint256 balance = balances[_account];
         if (balance == 0) { return 0; }
 
         uint256 vestedAmount = getVestedAmount(_account);
-        uint256 claimableAmount = vestedAmount.mul(timeDiff).div(vestingDuration);
+        uint256 claimableAmount = vestedAmount * timeDiff / vestingDuration;
 
         if (claimableAmount < balance) {
             return claimableAmount;
@@ -365,7 +361,7 @@ contract Vester is IVester, IERC20, ReentrancyGuard, Governable {
     function _claim(address _account, address _receiver) private returns (uint256) {
         _updateVesting(_account);
         uint256 amount = claimable(_account);
-        claimedAmounts[_account] = claimedAmounts[_account].add(amount);
+        claimedAmounts[_account] = claimedAmounts[_account] + amount;
         IERC20(claimableToken).safeTransfer(_receiver, amount);
         emit Claim(_account, amount);
         return amount;

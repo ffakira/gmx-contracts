@@ -16,11 +16,9 @@ import "../tokens/interfaces/IMintable.sol";
 import "../tokens/interfaces/IUSDG.sol";
 import "../staking/interfaces/IVester.sol";
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract GmxTimelock is IGmxTimelock {
-    using SafeMath for uint256;
 
     uint256 public constant PRICE_PRECISION = 10 ** 30;
     uint256 public constant MAX_BUFFER = 7 days;
@@ -541,12 +539,12 @@ contract GmxTimelock is IGmxTimelock {
     }
 
     function _setPendingAction(bytes32 _action) private {
-        pendingActions[_action] = block.timestamp.add(buffer);
+        pendingActions[_action] = block.timestamp + buffer;
         emit SignalPendingAction(_action);
     }
 
     function _setLongPendingAction(bytes32 _action) private {
-        pendingActions[_action] = block.timestamp.add(longBuffer);
+        pendingActions[_action] = block.timestamp + longBuffer;
         emit SignalPendingAction(_action);
     }
 

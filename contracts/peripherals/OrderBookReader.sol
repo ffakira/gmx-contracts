@@ -2,12 +2,9 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-
 import "../core/interfaces/IOrderBook.sol";
 
 contract OrderBookReader {
-    using SafeMath for uint256;
 
     struct Vars {
         uint256 i;

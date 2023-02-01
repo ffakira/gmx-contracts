@@ -5,8 +5,6 @@ import "../ShortsTracker.sol";
 pragma solidity ^0.8.0;
 
 contract ShortsTrackerTest is ShortsTracker {
-    using SafeMath for uint256;
-
     constructor(address _vault) ShortsTracker(_vault) {}
 
     function getNextGlobalShortDataWithRealisedPnl(
@@ -17,14 +15,14 @@ contract ShortsTrackerTest is ShortsTracker {
        bool _isIncrease
     ) public view returns (uint256, uint256) {
         uint256 averagePrice = globalShortAveragePrices[_indexToken];
-        uint256 priceDelta = averagePrice > _nextPrice ? averagePrice.sub(_nextPrice) : _nextPrice.sub(averagePrice);
+        uint256 priceDelta = averagePrice > _nextPrice ? averagePrice - _nextPrice : _nextPrice - averagePrice;
 
         uint256 nextSize;
         uint256 delta;
         // avoid stack to deep
         {
             uint256 size = vault.globalShortSizes(_indexToken);
-            nextSize = _isIncrease ? size.add(_sizeDelta) : size.sub(_sizeDelta);
+            nextSize = _isIncrease ? size + _sizeDelta : size - _sizeDelta;
 
             if (nextSize == 0) {
                 return (0, 0);
@@ -34,7 +32,7 @@ contract ShortsTrackerTest is ShortsTracker {
                 return (nextSize, _nextPrice);
             }
 
-            delta = size.mul(priceDelta).div(averagePrice);
+            delta = (size * priceDelta) / averagePrice;
         }
 
         uint256 nextAveragePrice = _getNextGlobalAveragePrice(

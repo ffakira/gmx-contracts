@@ -2,12 +2,10 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../core/interfaces/IGlpManager.sol";
 
 contract GlpBalance {
-    using SafeMath for uint256;
 
     IGlpManager public glpManager;
     address public stakedGlpTracker;
@@ -39,7 +37,8 @@ contract GlpBalance {
     }
 
     function transferFrom(address _sender, address _recipient, uint256 _amount) external returns (bool) {
-        uint256 nextAllowance = allowances[_sender][msg.sender].sub(_amount, "GlpBalance: transfer amount exceeds allowance");
+        uint256 nextAllowance = allowances[_sender][msg.sender] - _amount;
+        require(nextAllowance > 0, "GlpBalance: transfer amount exceeds allowance");
         _approve(_sender, msg.sender, nextAllowance);
         _transfer(_sender, _recipient, _amount);
         return true;
@@ -59,7 +58,7 @@ contract GlpBalance {
         require(_recipient != address(0), "GlpBalance: transfer to the zero address");
 
         require(
-            glpManager.lastAddedAt(_sender).add(glpManager.cooldownDuration()) <= block.timestamp,
+            glpManager.lastAddedAt(_sender) + glpManager.cooldownDuration() <= block.timestamp,
             "GlpBalance: cooldown duration not yet passed"
         );
 

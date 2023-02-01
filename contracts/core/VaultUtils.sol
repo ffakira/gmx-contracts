@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IVault.sol";
 import "./interfaces/IVaultUtils.sol";
@@ -10,8 +9,6 @@ import "./interfaces/IVaultUtils.sol";
 import "../access/Governable.sol";
 
 contract VaultUtils is IVaultUtils, Governable {
-    using SafeMath for uint256;
-
     struct Position {
         uint256 size;
         uint256 collateral;
@@ -63,7 +60,7 @@ contract VaultUtils is IVaultUtils, Governable {
 
         (bool hasProfit, uint256 delta) = _vault.getDelta(_indexToken, position.size, position.averagePrice, _isLong, position.lastIncreasedTime);
         uint256 marginFees = getFundingFee(_account, _collateralToken, _indexToken, _isLong, position.size, position.entryFundingRate);
-        marginFees = marginFees.add(getPositionFee(_account, _collateralToken, _indexToken, _isLong, position.size));
+        marginFees = marginFees + getPositionFee(_account, _collateralToken, _indexToken, _isLong, position.size);
 
         if (!hasProfit && position.collateral < delta) {
             if (_raise) { revert("Vault: losses exceed collateral"); }
@@ -72,7 +69,7 @@ contract VaultUtils is IVaultUtils, Governable {
 
         uint256 remainingCollateral = position.collateral;
         if (!hasProfit) {
-            remainingCollateral = position.collateral.sub(delta);
+            remainingCollateral = position.collateral - delta;
         }
 
         if (remainingCollateral < marginFees) {
@@ -81,12 +78,12 @@ contract VaultUtils is IVaultUtils, Governable {
             return (1, remainingCollateral);
         }
 
-        if (remainingCollateral < marginFees.add(_vault.liquidationFeeUsd())) {
+        if (remainingCollateral < marginFees + _vault.liquidationFeeUsd()) {
             if (_raise) { revert("Vault: liquidation fees exceed collateral"); }
             return (1, marginFees);
         }
 
-        if (remainingCollateral.mul(_vault.maxLeverage()) < position.size.mul(BASIS_POINTS_DIVISOR)) {
+        if (remainingCollateral * _vault.maxLeverage() < position.size * BASIS_POINTS_DIVISOR) {
             if (_raise) { revert("Vault: maxLeverage exceeded"); }
             return (2, marginFees);
         }
@@ -100,17 +97,17 @@ contract VaultUtils is IVaultUtils, Governable {
 
     function getPositionFee(address /* _account */, address /* _collateralToken */, address /* _indexToken */, bool /* _isLong */, uint256 _sizeDelta) public override view returns (uint256) {
         if (_sizeDelta == 0) { return 0; }
-        uint256 afterFeeUsd = _sizeDelta.mul(BASIS_POINTS_DIVISOR.sub(vault.marginFeeBasisPoints())).div(BASIS_POINTS_DIVISOR);
-        return _sizeDelta.sub(afterFeeUsd);
+        uint256 afterFeeUsd = (_sizeDelta * (BASIS_POINTS_DIVISOR - vault.marginFeeBasisPoints())) / BASIS_POINTS_DIVISOR;
+        return _sizeDelta - afterFeeUsd;
     }
 
     function getFundingFee(address /* _account */, address _collateralToken, address /* _indexToken */, bool /* _isLong */, uint256 _size, uint256 _entryFundingRate) public override view returns (uint256) {
         if (_size == 0) { return 0; }
 
-        uint256 fundingRate = vault.cumulativeFundingRates(_collateralToken).sub(_entryFundingRate);
+        uint256 fundingRate = vault.cumulativeFundingRates(_collateralToken) - _entryFundingRate;
         if (fundingRate == 0) { return 0; }
 
-        return _size.mul(fundingRate).div(FUNDING_RATE_PRECISION);
+        return (_size * fundingRate) / FUNDING_RATE_PRECISION;
     }
 
     function getBuyUsdgFeeBasisPoints(address _token, uint256 _usdgAmount) public override view returns (uint256) {
@@ -144,28 +141,28 @@ contract VaultUtils is IVaultUtils, Governable {
         if (!vault.hasDynamicFees()) { return _feeBasisPoints; }
 
         uint256 initialAmount = vault.usdgAmounts(_token);
-        uint256 nextAmount = initialAmount.add(_usdgDelta);
+        uint256 nextAmount = initialAmount + _usdgDelta;
         if (!_increment) {
-            nextAmount = _usdgDelta > initialAmount ? 0 : initialAmount.sub(_usdgDelta);
+            nextAmount = _usdgDelta > initialAmount ? 0 : initialAmount - _usdgDelta;
         }
 
         uint256 targetAmount = vault.getTargetUsdgAmount(_token);
         if (targetAmount == 0) { return _feeBasisPoints; }
 
-        uint256 initialDiff = initialAmount > targetAmount ? initialAmount.sub(targetAmount) : targetAmount.sub(initialAmount);
-        uint256 nextDiff = nextAmount > targetAmount ? nextAmount.sub(targetAmount) : targetAmount.sub(nextAmount);
+        uint256 initialDiff = initialAmount > targetAmount ? initialAmount - targetAmount : targetAmount - initialAmount;
+        uint256 nextDiff = nextAmount > targetAmount ? nextAmount - targetAmount : targetAmount - nextAmount;
 
         // action improves relative asset balance
         if (nextDiff < initialDiff) {
-            uint256 rebateBps = _taxBasisPoints.mul(initialDiff).div(targetAmount);
-            return rebateBps > _feeBasisPoints ? 0 : _feeBasisPoints.sub(rebateBps);
+            uint256 rebateBps = (_taxBasisPoints * initialDiff) / targetAmount;
+            return rebateBps > _feeBasisPoints ? 0 : _feeBasisPoints - rebateBps;
         }
 
-        uint256 averageDiff = initialDiff.add(nextDiff).div(2);
+        uint256 averageDiff = (initialDiff + nextDiff) / 2;
         if (averageDiff > targetAmount) {
             averageDiff = targetAmount;
         }
-        uint256 taxBps = _taxBasisPoints.mul(averageDiff).div(targetAmount);
-        return _feeBasisPoints.add(taxBps);
+        uint256 taxBps = (_taxBasisPoints * averageDiff) / targetAmount;
+        return _feeBasisPoints + taxBps;
     }
 }

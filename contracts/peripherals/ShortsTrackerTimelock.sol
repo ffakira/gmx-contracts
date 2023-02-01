@@ -2,13 +2,10 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "../access/Governable.sol";
 import "../core/interfaces/IShortsTracker.sol";
 
 contract ShortsTrackerTimelock {
-    using SafeMath for uint256;
-
     uint256 public constant BASIS_POINTS_DIVISOR = 10000;
     uint256 public constant MAX_BUFFER = 5 days;
 
@@ -180,10 +177,10 @@ contract ShortsTrackerTimelock {
             address token = _tokens[i];
             uint256 oldAveragePrice = _shortsTracker.globalShortAveragePrices(token);
             uint256 newAveragePrice = _averagePrices[i];
-            uint256 diff = newAveragePrice > oldAveragePrice ? newAveragePrice.sub(oldAveragePrice) : oldAveragePrice.sub(newAveragePrice);
-            require(diff.mul(BASIS_POINTS_DIVISOR).div(oldAveragePrice) < maxAveragePriceChange, "ShortsTrackerTimelock: too big change");
+            uint256 diff = newAveragePrice > oldAveragePrice ? newAveragePrice - oldAveragePrice : oldAveragePrice - newAveragePrice;
+            require((diff * BASIS_POINTS_DIVISOR) / oldAveragePrice < maxAveragePriceChange, "ShortsTrackerTimelock: too big change");
 
-            require(block.timestamp >= lastUpdated[token].add(averagePriceUpdateDelay), "ShortsTrackerTimelock: too early");
+            require(block.timestamp >= lastUpdated[token] + averagePriceUpdateDelay, "ShortsTrackerTimelock: too early");
             lastUpdated[token] = block.timestamp;
 
             emit GlobalShortAveragePriceUpdated(token, oldAveragePrice, newAveragePrice);
@@ -194,7 +191,7 @@ contract ShortsTrackerTimelock {
 
     function _setPendingAction(bytes32 _action) private {
         require(pendingActions[_action] == 0, "ShortsTrackerTimelock: action already signalled");
-        pendingActions[_action] = block.timestamp.add(buffer);
+        pendingActions[_action] = block.timestamp + buffer;
         emit SignalPendingAction(_action);
     }
 

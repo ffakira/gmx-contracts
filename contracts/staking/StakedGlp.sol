@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../core/interfaces/IGlpManager.sol";
@@ -14,8 +13,6 @@ import "./interfaces/IRewardTracker.sol";
 // and staking for the receiver
 // tests in RewardRouterV2.js
 contract StakedGlp {
-    using SafeMath for uint256;
-
     string public constant name = "StakedGlp";
     string public constant symbol = "sGLP";
     uint8 public constant decimals = 18;
@@ -56,7 +53,8 @@ contract StakedGlp {
     }
 
     function transferFrom(address _sender, address _recipient, uint256 _amount) external returns (bool) {
-        uint256 nextAllowance = allowances[_sender][msg.sender].sub(_amount, "StakedGlp: transfer amount exceeds allowance");
+        uint256 nextAllowance = allowances[_sender][msg.sender] - _amount;
+        require(nextAllowance > 0, "StakedGlp: transfer amount exceeds allowance");
         _approve(_sender, msg.sender, nextAllowance);
         _transfer(_sender, _recipient, _amount);
         return true;
@@ -84,7 +82,7 @@ contract StakedGlp {
         require(_recipient != address(0), "StakedGlp: transfer to the zero address");
 
         require(
-            glpManager.lastAddedAt(_sender).add(glpManager.cooldownDuration()) <= block.timestamp,
+            glpManager.lastAddedAt(_sender) + glpManager.cooldownDuration() <= block.timestamp,
             "StakedGlp: cooldown duration not yet passed"
         );
 

@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -11,7 +10,6 @@ import "../tokens/interfaces/IMintable.sol";
 import "../access/TokenManager.sol";
 
 contract GmxFloor is ReentrancyGuard, TokenManager {
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     uint256 public constant BASIS_POINTS_DIVISOR = 10000;
@@ -76,14 +74,14 @@ contract GmxFloor is ReentrancyGuard, TokenManager {
         require(_amount > 0, "GmxFloor: invalid _amount");
 
         uint256 currentMintPrice = getMintPrice();
-        uint256 nextMintPrice = currentMintPrice.add(_amount.mul(mintMultiplier).div(multiplierPrecision));
-        uint256 averageMintPrice = currentMintPrice.add(nextMintPrice).div(2);
+        uint256 nextMintPrice = (currentMintPrice + (_amount * mintMultiplier)) / multiplierPrecision;
+        uint256 averageMintPrice = (currentMintPrice + nextMintPrice) / 2;
 
-        uint256 cost = _amount.mul(averageMintPrice).div(PRICE_PRECISION);
+        uint256 cost = (_amount * averageMintPrice) / PRICE_PRECISION;
         require(cost <= _maxCost, "GmxFloor: _maxCost exceeded");
 
-        mintedSupply = mintedSupply.add(_amount);
-        backedSupply = backedSupply.add(_amount);
+        mintedSupply = mintedSupply + _amount;
+        backedSupply = backedSupply + _amount;
 
         IERC20(reserveToken).safeTransferFrom(msg.sender, address(this), cost);
         IERC20(gmx).transfer(_receiver, _amount);
@@ -97,7 +95,7 @@ contract GmxFloor is ReentrancyGuard, TokenManager {
         uint256 amountOut = getBurnAmountOut(_amount);
         require(amountOut >= _minOut, "GmxFloor: insufficient amountOut");
 
-        backedSupply = backedSupply.sub(_amount);
+        backedSupply = backedSupply - _amount;
 
         IMintable(gmx).burn(msg.sender, _amount);
         IERC20(reserveToken).safeTransfer(_receiver, amountOut);
@@ -106,11 +104,11 @@ contract GmxFloor is ReentrancyGuard, TokenManager {
     }
 
     function getMintPrice() public view returns (uint256) {
-        return baseMintPrice.add(mintedSupply.mul(mintMultiplier).div(multiplierPrecision));
+        return (baseMintPrice + (mintedSupply * mintMultiplier)) / multiplierPrecision;
     }
 
     function getBurnAmountOut(uint256 _amount) public view returns (uint256) {
         uint256 balance = IERC20(reserveToken).balanceOf(address(this));
-        return _amount.mul(balance).div(backedSupply).mul(BURN_BASIS_POINTS).div(BASIS_POINTS_DIVISOR);
+        return (_amount * balance) / (backedSupply * BURN_BASIS_POINTS) / BASIS_POINTS_DIVISOR;
     }
 }

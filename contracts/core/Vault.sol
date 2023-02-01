@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -13,7 +12,6 @@ import "./interfaces/IVaultUtils.sol";
 import "./interfaces/IVaultPriceFeed.sol";
 
 contract Vault is ReentrancyGuard, IVault {
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     struct Position {
@@ -295,12 +293,12 @@ contract Vault is ReentrancyGuard, IVault {
         _onlyGov();
         // increment token count for the first time
         if (!whitelistedTokens[_token]) {
-            whitelistedTokenCount = whitelistedTokenCount.add(1);
+            whitelistedTokenCount = whitelistedTokenCount + 1;
             allWhitelistedTokens.push(_token);
         }
 
         uint256 _totalTokenWeights = totalTokenWeights;
-        _totalTokenWeights = _totalTokenWeights.sub(tokenWeights[_token]);
+        _totalTokenWeights = _totalTokenWeights - tokenWeights[_token];
 
         whitelistedTokens[_token] = true;
         tokenDecimals[_token] = _tokenDecimals;
@@ -310,7 +308,7 @@ contract Vault is ReentrancyGuard, IVault {
         stableTokens[_token] = _isStable;
         shortableTokens[_token] = _isShortable;
 
-        totalTokenWeights = _totalTokenWeights.add(_tokenWeight);
+        totalTokenWeights = _totalTokenWeights + _tokenWeight;
 
         // validate price feed
         getMaxPrice(_token);
@@ -319,7 +317,7 @@ contract Vault is ReentrancyGuard, IVault {
     function clearTokenConfig(address _token) external {
         _onlyGov();
         _validate(whitelistedTokens[_token], 13);
-        totalTokenWeights = totalTokenWeights.sub(tokenWeights[_token]);
+        totalTokenWeights = totalTokenWeights - tokenWeights[_token];
         delete whitelistedTokens[_token];
         delete tokenDecimals[_token];
         delete tokenWeights[_token];
@@ -327,7 +325,7 @@ contract Vault is ReentrancyGuard, IVault {
         delete maxUsdgAmounts[_token];
         delete stableTokens[_token];
         delete shortableTokens[_token];
-        whitelistedTokenCount = whitelistedTokenCount.sub(1);
+        whitelistedTokenCount = whitelistedTokenCount - 1;
     }
 
     function withdrawFees(address _token, address _receiver) external override returns (uint256) {
@@ -352,11 +350,11 @@ contract Vault is ReentrancyGuard, IVault {
 
         uint256 usdgAmount = usdgAmounts[_token];
         if (_amount > usdgAmount) {
-            _increaseUsdgAmount(_token, _amount.sub(usdgAmount));
+            _increaseUsdgAmount(_token, _amount - usdgAmount);
             return;
         }
 
-        _decreaseUsdgAmount(_token, usdgAmount.sub(_amount));
+        _decreaseUsdgAmount(_token, usdgAmount - _amount);
     }
 
     // the governance controlling this function should have a timelock
@@ -387,13 +385,13 @@ contract Vault is ReentrancyGuard, IVault {
 
         uint256 price = getMinPrice(_token);
 
-        uint256 usdgAmount = tokenAmount.mul(price).div(PRICE_PRECISION);
+        uint256 usdgAmount = (tokenAmount * price) / PRICE_PRECISION;
         usdgAmount = adjustForDecimals(usdgAmount, _token, usdg);
         _validate(usdgAmount > 0, 18);
 
         uint256 feeBasisPoints = vaultUtils.getBuyUsdgFeeBasisPoints(_token, usdgAmount);
         uint256 amountAfterFees = _collectSwapFees(_token, tokenAmount, feeBasisPoints);
-        uint256 mintAmount = amountAfterFees.mul(price).div(PRICE_PRECISION);
+        uint256 mintAmount = (amountAfterFees * price) / PRICE_PRECISION;
         mintAmount = adjustForDecimals(mintAmount, _token, usdg);
 
         _increaseUsdgAmount(_token, mintAmount);
@@ -460,11 +458,11 @@ contract Vault is ReentrancyGuard, IVault {
         uint256 priceIn = getMinPrice(_tokenIn);
         uint256 priceOut = getMaxPrice(_tokenOut);
 
-        uint256 amountOut = amountIn.mul(priceIn).div(priceOut);
+        uint256 amountOut = (amountIn * priceIn) / priceOut;
         amountOut = adjustForDecimals(amountOut, _tokenIn, _tokenOut);
 
         // adjust usdgAmounts by the same usdgAmount as debt is shifted between the assets
-        uint256 usdgAmount = amountIn.mul(priceIn).div(PRICE_PRECISION);
+        uint256 usdgAmount = (amountIn * priceIn) / PRICE_PRECISION;
         usdgAmount = adjustForDecimals(usdgAmount, _tokenIn, usdg);
 
         uint256 feeBasisPoints = vaultUtils.getSwapFeeBasisPoints(_tokenIn, _tokenOut, usdgAmount);
@@ -512,12 +510,12 @@ contract Vault is ReentrancyGuard, IVault {
         uint256 collateralDelta = _transferIn(_collateralToken);
         uint256 collateralDeltaUsd = tokenToUsdMin(_collateralToken, collateralDelta);
 
-        position.collateral = position.collateral.add(collateralDeltaUsd);
+        position.collateral = position.collateral + collateralDeltaUsd;
         _validate(position.collateral >= fee, 29);
 
-        position.collateral = position.collateral.sub(fee);
+        position.collateral = position.collateral - fee;
         position.entryFundingRate = getEntryFundingRate(_collateralToken, _indexToken, _isLong);
-        position.size = position.size.add(_sizeDelta);
+        position.size = position.size + _sizeDelta;
         position.lastIncreasedTime = block.timestamp;
 
         _validate(position.size > 0, 30);
@@ -526,14 +524,14 @@ contract Vault is ReentrancyGuard, IVault {
 
         // reserve tokens to pay profits on the position
         uint256 reserveDelta = usdToTokenMax(_collateralToken, _sizeDelta);
-        position.reserveAmount = position.reserveAmount.add(reserveDelta);
+        position.reserveAmount = position.reserveAmount + reserveDelta;
         _increaseReservedAmount(_collateralToken, reserveDelta);
 
         if (_isLong) {
             // guaranteedUsd stores the sum of (position.size - position.collateral) for all positions
             // if a fee is charged on the collateral then guaranteedUsd should be increased by that fee amount
             // since (position.size - position.collateral) would have increased by `fee`
-            _increaseGuaranteedUsd(_collateralToken, _sizeDelta.add(fee));
+            _increaseGuaranteedUsd(_collateralToken, _sizeDelta + fee);
             _decreaseGuaranteedUsd(_collateralToken, collateralDeltaUsd);
             // treat the deposited collateral as part of the pool
             _increasePoolAmount(_collateralToken, collateralDelta);
@@ -573,8 +571,8 @@ contract Vault is ReentrancyGuard, IVault {
         uint256 collateral = position.collateral;
         // scrop variables to avoid stack too deep errors
         {
-        uint256 reserveDelta = position.reserveAmount.mul(_sizeDelta).div(position.size);
-        position.reserveAmount = position.reserveAmount.sub(reserveDelta);
+        uint256 reserveDelta = (position.reserveAmount * _sizeDelta) / position.size;
+        position.reserveAmount = position.reserveAmount - reserveDelta;
         _decreaseReservedAmount(_collateralToken, reserveDelta);
         }
 
@@ -582,18 +580,18 @@ contract Vault is ReentrancyGuard, IVault {
 
         if (position.size != _sizeDelta) {
             position.entryFundingRate = getEntryFundingRate(_collateralToken, _indexToken, _isLong);
-            position.size = position.size.sub(_sizeDelta);
+            position.size = position.size - _sizeDelta;
 
             _validatePosition(position.size, position.collateral);
             validateLiquidation(_account, _collateralToken, _indexToken, _isLong, true);
 
             if (_isLong) {
-                _increaseGuaranteedUsd(_collateralToken, collateral.sub(position.collateral));
+                _increaseGuaranteedUsd(_collateralToken, collateral - position.collateral);
                 _decreaseGuaranteedUsd(_collateralToken, _sizeDelta);
             }
 
             uint256 price = _isLong ? getMinPrice(_indexToken) : getMaxPrice(_indexToken);
-            emit DecreasePosition(key, _account, _collateralToken, _indexToken, _collateralDelta, _sizeDelta, _isLong, price, usdOut.sub(usdOutAfterFee));
+            emit DecreasePosition(key, _account, _collateralToken, _indexToken, _collateralDelta, _sizeDelta, _isLong, price, usdOut - usdOutAfterFee);
             emit UpdatePosition(key, position.size, position.collateral, position.averagePrice, position.entryFundingRate, position.reserveAmount, position.realisedPnl, price);
         } else {
             if (_isLong) {
@@ -602,7 +600,7 @@ contract Vault is ReentrancyGuard, IVault {
             }
 
             uint256 price = _isLong ? getMinPrice(_indexToken) : getMaxPrice(_indexToken);
-            emit DecreasePosition(key, _account, _collateralToken, _indexToken, _collateralDelta, _sizeDelta, _isLong, price, usdOut.sub(usdOutAfterFee));
+            emit DecreasePosition(key, _account, _collateralToken, _indexToken, _collateralDelta, _sizeDelta, _isLong, price, usdOut - usdOutAfterFee);
             emit ClosePosition(key, position.size, position.collateral, position.averagePrice, position.entryFundingRate, position.reserveAmount, position.realisedPnl);
 
             delete positions[key];
@@ -648,12 +646,12 @@ contract Vault is ReentrancyGuard, IVault {
         }
 
         uint256 feeTokens = usdToTokenMin(_collateralToken, marginFees);
-        feeReserves[_collateralToken] = feeReserves[_collateralToken].add(feeTokens);
+        feeReserves[_collateralToken] = feeReserves[_collateralToken] + feeTokens;
         emit CollectMarginFees(_collateralToken, marginFees, feeTokens);
 
         _decreaseReservedAmount(_collateralToken, position.reserveAmount);
         if (_isLong) {
-            _decreaseGuaranteedUsd(_collateralToken, position.size.sub(position.collateral));
+            _decreaseGuaranteedUsd(_collateralToken, position.size - position.collateral);
             _decreasePoolAmount(_collateralToken, usdToTokenMin(_collateralToken, marginFees));
         }
 
@@ -661,7 +659,7 @@ contract Vault is ReentrancyGuard, IVault {
         emit LiquidatePosition(key, _account, _collateralToken, _indexToken, _isLong, position.size, position.collateral, position.reserveAmount, position.realisedPnl, markPrice);
 
         if (!_isLong && marginFees < position.collateral) {
-            uint256 remainingCollateral = position.collateral.sub(marginFees);
+            uint256 remainingCollateral = position.collateral - marginFees;
             _increasePoolAmount(_collateralToken, usdToTokenMin(_collateralToken, remainingCollateral));
         }
 
@@ -694,7 +692,7 @@ contract Vault is ReentrancyGuard, IVault {
 
     function getRedemptionAmount(address _token, uint256 _usdgAmount) public override view returns (uint256) {
         uint256 price = getMaxPrice(_token);
-        uint256 redemptionAmount = _usdgAmount.mul(PRICE_PRECISION).div(price);
+        uint256 redemptionAmount = (_usdgAmount * PRICE_PRECISION) / price;
         return adjustForDecimals(redemptionAmount, usdg, _token);
     }
 
@@ -703,7 +701,7 @@ contract Vault is ReentrancyGuard, IVault {
             return poolAmounts[_token];
         }
         uint256 collateral = usdToTokenMin(_token, guaranteedUsd[_token]);
-        return collateral.add(poolAmounts[_token]).sub(reservedAmounts[_token]);
+        return collateral + poolAmounts[_token] - reservedAmounts[_token];
     }
 
     function getRedemptionCollateralUsd(address _token) public view returns (uint256) {
@@ -713,14 +711,14 @@ contract Vault is ReentrancyGuard, IVault {
     function adjustForDecimals(uint256 _amount, address _tokenDiv, address _tokenMul) public view returns (uint256) {
         uint256 decimalsDiv = _tokenDiv == usdg ? USDG_DECIMALS : tokenDecimals[_tokenDiv];
         uint256 decimalsMul = _tokenMul == usdg ? USDG_DECIMALS : tokenDecimals[_tokenMul];
-        return _amount.mul(10 ** decimalsMul).div(10 ** decimalsDiv);
+        return (_amount * (10 ** decimalsMul)) / (10 ** decimalsDiv);
     }
 
     function tokenToUsdMin(address _token, uint256 _tokenAmount) public override view returns (uint256) {
         if (_tokenAmount == 0) { return 0; }
         uint256 price = getMinPrice(_token);
         uint256 decimals = tokenDecimals[_token];
-        return _tokenAmount.mul(price).div(10 ** decimals);
+        return (_tokenAmount * price) / (10 ** decimals);
     }
 
     function usdToTokenMax(address _token, uint256 _usdAmount) public view returns (uint256) {
@@ -736,7 +734,7 @@ contract Vault is ReentrancyGuard, IVault {
     function usdToToken(address _token, uint256 _usdAmount, uint256 _price) public view returns (uint256) {
         if (_usdAmount == 0) { return 0; }
         uint256 decimals = tokenDecimals[_token];
-        return _usdAmount.mul(10 ** decimals).div(_price);
+        return (_usdAmount * (10 ** decimals)) / _price;
     }
 
     function getPosition(address _account, address _collateralToken, address _indexToken, bool _isLong) public override view returns (uint256, uint256, uint256, uint256, uint256, uint256, bool, uint256) {
@@ -771,58 +769,58 @@ contract Vault is ReentrancyGuard, IVault {
         }
 
         if (lastFundingTimes[_collateralToken] == 0) {
-            lastFundingTimes[_collateralToken] = block.timestamp.div(fundingInterval).mul(fundingInterval);
+            lastFundingTimes[_collateralToken] = block.timestamp / (fundingInterval * fundingInterval);
             return;
         }
 
-        if (lastFundingTimes[_collateralToken].add(fundingInterval) > block.timestamp) {
+        if (lastFundingTimes[_collateralToken] + fundingInterval > block.timestamp) {
             return;
         }
 
         uint256 fundingRate = getNextFundingRate(_collateralToken);
-        cumulativeFundingRates[_collateralToken] = cumulativeFundingRates[_collateralToken].add(fundingRate);
-        lastFundingTimes[_collateralToken] = block.timestamp.div(fundingInterval).mul(fundingInterval);
+        cumulativeFundingRates[_collateralToken] = cumulativeFundingRates[_collateralToken] + fundingRate;
+        lastFundingTimes[_collateralToken] = block.timestamp / (fundingInterval * fundingInterval);
 
         emit UpdateFundingRate(_collateralToken, cumulativeFundingRates[_collateralToken]);
     }
 
     function getNextFundingRate(address _token) public override view returns (uint256) {
-        if (lastFundingTimes[_token].add(fundingInterval) > block.timestamp) { return 0; }
+        if (lastFundingTimes[_token] + fundingInterval > block.timestamp) { return 0; }
 
-        uint256 intervals = block.timestamp.sub(lastFundingTimes[_token]).div(fundingInterval);
+        uint256 intervals = (block.timestamp - lastFundingTimes[_token]) / fundingInterval;
         uint256 poolAmount = poolAmounts[_token];
         if (poolAmount == 0) { return 0; }
 
         uint256 _fundingRateFactor = stableTokens[_token] ? stableFundingRateFactor : fundingRateFactor;
-        return _fundingRateFactor.mul(reservedAmounts[_token]).mul(intervals).div(poolAmount);
+        return (_fundingRateFactor * reservedAmounts[_token] * intervals) / poolAmount;
     }
 
     function getUtilisation(address _token) public view returns (uint256) {
         uint256 poolAmount = poolAmounts[_token];
         if (poolAmount == 0) { return 0; }
 
-        return reservedAmounts[_token].mul(FUNDING_RATE_PRECISION).div(poolAmount);
+        return (reservedAmounts[_token] * FUNDING_RATE_PRECISION) / poolAmount;
     }
 
     function getPositionLeverage(address _account, address _collateralToken, address _indexToken, bool _isLong) public view returns (uint256) {
         bytes32 key = getPositionKey(_account, _collateralToken, _indexToken, _isLong);
         Position memory position = positions[key];
         _validate(position.collateral > 0, 37);
-        return position.size.mul(BASIS_POINTS_DIVISOR).div(position.collateral);
+        return (position.size * BASIS_POINTS_DIVISOR) / position.collateral;
     }
 
     // for longs: nextAveragePrice = (nextPrice * nextSize)/ (nextSize + delta)
     // for shorts: nextAveragePrice = (nextPrice * nextSize) / (nextSize - delta)
     function getNextAveragePrice(address _indexToken, uint256 _size, uint256 _averagePrice, bool _isLong, uint256 _nextPrice, uint256 _sizeDelta, uint256 _lastIncreasedTime) public view returns (uint256) {
         (bool hasProfit, uint256 delta) = getDelta(_indexToken, _size, _averagePrice, _isLong, _lastIncreasedTime);
-        uint256 nextSize = _size.add(_sizeDelta);
+        uint256 nextSize = _size + _sizeDelta;
         uint256 divisor;
         if (_isLong) {
-            divisor = hasProfit ? nextSize.add(delta) : nextSize.sub(delta);
+            divisor = hasProfit ? nextSize + delta : nextSize - delta;
         } else {
-            divisor = hasProfit ? nextSize.sub(delta) : nextSize.add(delta);
+            divisor = hasProfit ? nextSize - delta : nextSize + delta;
         }
-        return _nextPrice.mul(nextSize).div(divisor);
+        return (_nextPrice * nextSize) / divisor;
     }
 
     // for longs: nextAveragePrice = (nextPrice * nextSize)/ (nextSize + delta)
@@ -830,14 +828,14 @@ contract Vault is ReentrancyGuard, IVault {
     function getNextGlobalShortAveragePrice(address _indexToken, uint256 _nextPrice, uint256 _sizeDelta) public view returns (uint256) {
         uint256 size = globalShortSizes[_indexToken];
         uint256 averagePrice = globalShortAveragePrices[_indexToken];
-        uint256 priceDelta = averagePrice > _nextPrice ? averagePrice.sub(_nextPrice) : _nextPrice.sub(averagePrice);
-        uint256 delta = size.mul(priceDelta).div(averagePrice);
+        uint256 priceDelta = averagePrice > _nextPrice ? averagePrice - _nextPrice : _nextPrice - averagePrice;
+        uint256 delta = (size * priceDelta) / averagePrice;
         bool hasProfit = averagePrice > _nextPrice;
 
-        uint256 nextSize = size.add(_sizeDelta);
-        uint256 divisor = hasProfit ? nextSize.sub(delta) : nextSize.add(delta);
+        uint256 nextSize = size + _sizeDelta;
+        uint256 divisor = hasProfit ? nextSize - delta : nextSize + delta;
 
-        return _nextPrice.mul(nextSize).div(divisor);
+        return (_nextPrice * nextSize) / divisor;
     }
 
     function getGlobalShortDelta(address _token) public view returns (bool, uint256) {
@@ -846,8 +844,8 @@ contract Vault is ReentrancyGuard, IVault {
 
         uint256 nextPrice = getMaxPrice(_token);
         uint256 averagePrice = globalShortAveragePrices[_token];
-        uint256 priceDelta = averagePrice > nextPrice ? averagePrice.sub(nextPrice) : nextPrice.sub(averagePrice);
-        uint256 delta = size.mul(priceDelta).div(averagePrice);
+        uint256 priceDelta = averagePrice > nextPrice ? averagePrice - nextPrice : nextPrice - averagePrice;
+        uint256 delta = (size * priceDelta) / averagePrice;
         bool hasProfit = averagePrice > nextPrice;
 
         return (hasProfit, delta);
@@ -862,8 +860,8 @@ contract Vault is ReentrancyGuard, IVault {
     function getDelta(address _indexToken, uint256 _size, uint256 _averagePrice, bool _isLong, uint256 _lastIncreasedTime) public override view returns (bool, uint256) {
         _validate(_averagePrice > 0, 38);
         uint256 price = _isLong ? getMinPrice(_indexToken) : getMaxPrice(_indexToken);
-        uint256 priceDelta = _averagePrice > price ? _averagePrice.sub(price) : price.sub(_averagePrice);
-        uint256 delta = _size.mul(priceDelta).div(_averagePrice);
+        uint256 priceDelta = _averagePrice > price ? _averagePrice - price : price - _averagePrice;
+        uint256 delta = (_size * priceDelta) - _averagePrice;
 
         bool hasProfit;
 
@@ -875,8 +873,8 @@ contract Vault is ReentrancyGuard, IVault {
 
         // if the minProfitTime has passed then there will be no min profit threshold
         // the min profit threshold helps to prevent front-running issues
-        uint256 minBps = block.timestamp > _lastIncreasedTime.add(minProfitTime) ? 0 : minProfitBasisPoints[_indexToken];
-        if (hasProfit && delta.mul(BASIS_POINTS_DIVISOR) <= _size.mul(minBps)) {
+        uint256 minBps = block.timestamp > _lastIncreasedTime + minProfitTime ? 0 : minProfitBasisPoints[_indexToken];
+        if (hasProfit && delta * BASIS_POINTS_DIVISOR <= _size * minBps) {
             delta = 0;
         }
 
@@ -912,7 +910,7 @@ contract Vault is ReentrancyGuard, IVault {
         uint256 supply = IERC20(usdg).totalSupply();
         if (supply == 0) { return 0; }
         uint256 weight = tokenWeights[_token];
-        return weight.mul(supply).div(totalTokenWeights);
+        return (weight * supply) / totalTokenWeights;
     }
 
     function _reduceCollateral(address _account, address _collateralToken, address _indexToken, uint256 _collateralDelta, uint256 _sizeDelta, bool _isLong) private returns (uint256, uint256) {
@@ -928,7 +926,7 @@ contract Vault is ReentrancyGuard, IVault {
         (bool _hasProfit, uint256 delta) = getDelta(_indexToken, position.size, position.averagePrice, _isLong, position.lastIncreasedTime);
         hasProfit = _hasProfit;
         // get the proportional change in pnl
-        adjustedDelta = _sizeDelta.mul(delta).div(position.size);
+        adjustedDelta = (_sizeDelta * delta) / position.size;
         }
 
         uint256 usdOut;
@@ -945,7 +943,7 @@ contract Vault is ReentrancyGuard, IVault {
         }
 
         if (!hasProfit && adjustedDelta > 0) {
-            position.collateral = position.collateral.sub(adjustedDelta);
+            position.collateral = position.collateral - adjustedDelta;
 
             // transfer realised losses to the pool for short positions
             // realised losses for long positions are not transferred here as
@@ -961,13 +959,13 @@ contract Vault is ReentrancyGuard, IVault {
         // reduce the position's collateral by _collateralDelta
         // transfer _collateralDelta out
         if (_collateralDelta > 0) {
-            usdOut = usdOut.add(_collateralDelta);
-            position.collateral = position.collateral.sub(_collateralDelta);
+            usdOut = usdOut + _collateralDelta;
+            position.collateral = position.collateral - _collateralDelta;
         }
 
         // if the position will be closed, then transfer the remaining collateral out
         if (position.size == _sizeDelta) {
-            usdOut = usdOut.add(position.collateral);
+            usdOut = usdOut + position.collateral;
             position.collateral = 0;
         }
 
@@ -975,9 +973,9 @@ contract Vault is ReentrancyGuard, IVault {
         // else deduct the fee from the position's collateral
         uint256 usdOutAfterFee = usdOut;
         if (usdOut > fee) {
-            usdOutAfterFee = usdOut.sub(fee);
+            usdOutAfterFee = usdOut - fee;
         } else {
-            position.collateral = position.collateral.sub(fee);
+            position.collateral = position.collateral - fee;
             if (_isLong) {
                 uint256 feeTokens = usdToTokenMin(_collateralToken, fee);
                 _decreasePoolAmount(_collateralToken, feeTokens);
@@ -1018,9 +1016,9 @@ contract Vault is ReentrancyGuard, IVault {
     }
 
     function _collectSwapFees(address _token, uint256 _amount, uint256 _feeBasisPoints) private returns (uint256) {
-        uint256 afterFeeAmount = _amount.mul(BASIS_POINTS_DIVISOR.sub(_feeBasisPoints)).div(BASIS_POINTS_DIVISOR);
-        uint256 feeAmount = _amount.sub(afterFeeAmount);
-        feeReserves[_token] = feeReserves[_token].add(feeAmount);
+        uint256 afterFeeAmount = (_amount * (BASIS_POINTS_DIVISOR - _feeBasisPoints)) / BASIS_POINTS_DIVISOR;
+        uint256 feeAmount = _amount - afterFeeAmount;
+        feeReserves[_token] = feeReserves[_token] + feeAmount;
         emit CollectSwapFees(_token, tokenToUsdMin(_token, feeAmount), feeAmount);
         return afterFeeAmount;
     }
@@ -1029,10 +1027,10 @@ contract Vault is ReentrancyGuard, IVault {
         uint256 feeUsd = getPositionFee(_account, _collateralToken, _indexToken, _isLong, _sizeDelta);
 
         uint256 fundingFee = getFundingFee(_account, _collateralToken, _indexToken, _isLong, _size, _entryFundingRate);
-        feeUsd = feeUsd.add(fundingFee);
+        feeUsd = feeUsd + fundingFee;
 
         uint256 feeTokens = usdToTokenMin(_collateralToken, feeUsd);
-        feeReserves[_collateralToken] = feeReserves[_collateralToken].add(feeTokens);
+        feeReserves[_collateralToken] = feeReserves[_collateralToken] + feeTokens;
 
         emit CollectMarginFees(_collateralToken, feeUsd, feeTokens);
         return feeUsd;
@@ -1043,7 +1041,7 @@ contract Vault is ReentrancyGuard, IVault {
         uint256 nextBalance = IERC20(_token).balanceOf(address(this));
         tokenBalances[_token] = nextBalance;
 
-        return nextBalance.sub(prevBalance);
+        return nextBalance - prevBalance;
     }
 
     function _transferOut(address _token, uint256 _amount, address _receiver) private {
@@ -1057,14 +1055,15 @@ contract Vault is ReentrancyGuard, IVault {
     }
 
     function _increasePoolAmount(address _token, uint256 _amount) private {
-        poolAmounts[_token] = poolAmounts[_token].add(_amount);
+        poolAmounts[_token] = poolAmounts[_token] + _amount;
         uint256 balance = IERC20(_token).balanceOf(address(this));
         _validate(poolAmounts[_token] <= balance, 49);
         emit IncreasePoolAmount(_token, _amount);
     }
 
     function _decreasePoolAmount(address _token, uint256 _amount) private {
-        poolAmounts[_token] = poolAmounts[_token].sub(_amount, "Vault: poolAmount exceeded");
+        require(poolAmounts[_token] - _amount > 0, "Vault: poolAmount exceeded");
+        poolAmounts[_token] = poolAmounts[_token] - _amount;
         _validate(reservedAmounts[_token] <= poolAmounts[_token], 50);
         emit DecreasePoolAmount(_token, _amount);
     }
@@ -1076,7 +1075,7 @@ contract Vault is ReentrancyGuard, IVault {
     }
 
     function _increaseUsdgAmount(address _token, uint256 _amount) private {
-        usdgAmounts[_token] = usdgAmounts[_token].add(_amount);
+        usdgAmounts[_token] = usdgAmounts[_token] + _amount;
         uint256 maxUsdgAmount = maxUsdgAmounts[_token];
         if (maxUsdgAmount != 0) {
             _validate(usdgAmounts[_token] <= maxUsdgAmount, 51);
@@ -1094,33 +1093,34 @@ contract Vault is ReentrancyGuard, IVault {
             emit DecreaseUsdgAmount(_token, value);
             return;
         }
-        usdgAmounts[_token] = value.sub(_amount);
+        usdgAmounts[_token] = value - _amount;
         emit DecreaseUsdgAmount(_token, _amount);
     }
 
     function _increaseReservedAmount(address _token, uint256 _amount) private {
-        reservedAmounts[_token] = reservedAmounts[_token].add(_amount);
+        reservedAmounts[_token] = reservedAmounts[_token] + _amount;
         _validate(reservedAmounts[_token] <= poolAmounts[_token], 52);
         emit IncreaseReservedAmount(_token, _amount);
     }
 
     function _decreaseReservedAmount(address _token, uint256 _amount) private {
-        reservedAmounts[_token] = reservedAmounts[_token].sub(_amount, "Vault: insufficient reserve");
+        require(reservedAmounts[_token] - _amount > 0, "Vault: insufficient reserve");
+        reservedAmounts[_token] = reservedAmounts[_token] - _amount;
         emit DecreaseReservedAmount(_token, _amount);
     }
 
     function _increaseGuaranteedUsd(address _token, uint256 _usdAmount) private {
-        guaranteedUsd[_token] = guaranteedUsd[_token].add(_usdAmount);
+        guaranteedUsd[_token] = guaranteedUsd[_token] + _usdAmount;
         emit IncreaseGuaranteedUsd(_token, _usdAmount);
     }
 
     function _decreaseGuaranteedUsd(address _token, uint256 _usdAmount) private {
-        guaranteedUsd[_token] = guaranteedUsd[_token].sub(_usdAmount);
+        guaranteedUsd[_token] = guaranteedUsd[_token] - _usdAmount;
         emit DecreaseGuaranteedUsd(_token, _usdAmount);
     }
 
     function _increaseGlobalShortSize(address _token, uint256 _amount) internal {
-        globalShortSizes[_token] = globalShortSizes[_token].add(_amount);
+        globalShortSizes[_token] = globalShortSizes[_token] + _amount;
 
         uint256 maxSize = maxGlobalShortSizes[_token];
         if (maxSize != 0) {
@@ -1135,7 +1135,7 @@ contract Vault is ReentrancyGuard, IVault {
           return;
         }
 
-        globalShortSizes[_token] = size.sub(_amount);
+        globalShortSizes[_token] = size - _amount;
     }
 
     // we have this validation as a function instead of a modifier to reduce contract size

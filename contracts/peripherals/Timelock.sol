@@ -17,12 +17,9 @@ import "../tokens/interfaces/IUSDG.sol";
 import "../staking/interfaces/IVester.sol";
 import "../staking/interfaces/IRewardRouterV2.sol";
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract Timelock is ITimelock {
-    using SafeMath for uint256;
-
     uint256 public constant PRICE_PRECISION = 10 ** 30;
     uint256 public constant MAX_BUFFER = 5 days;
     uint256 public constant MAX_FUNDING_RATE_FACTOR = 200; // 0.02%
@@ -317,10 +314,10 @@ contract Timelock is ITimelock {
         IUSDG(usdg).addVault(address(this));
 
         if (usdgAmount > balance) {
-            uint256 mintAmount = usdgAmount.sub(balance);
+            uint256 mintAmount = usdgAmount - balance;
             IUSDG(usdg).mint(glpManager, mintAmount);
         } else {
-            uint256 burnAmount = balance.sub(usdgAmount);
+            uint256 burnAmount = balance - usdgAmount;
             IUSDG(usdg).burn(glpManager, burnAmount);
         }
 
@@ -601,7 +598,7 @@ contract Timelock is ITimelock {
 
     function _setPendingAction(bytes32 _action) private {
         require(pendingActions[_action] == 0, "Timelock: action already signalled");
-        pendingActions[_action] = block.timestamp.add(buffer);
+        pendingActions[_action] = block.timestamp + buffer;
         emit SignalPendingAction(_action);
     }
 

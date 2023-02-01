@@ -3,7 +3,6 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "../core/interfaces/IVault.sol";
 import "../core/interfaces/IVaultPriceFeed.sol";
@@ -15,8 +14,6 @@ import "../staking/interfaces/IVester.sol";
 import "../access/Governable.sol";
 
 contract Reader is Governable {
-    using SafeMath for uint256;
-
     uint256 public constant BASIS_POINTS_DIVISOR = 10000;
     uint256 public constant POSITION_PROPS_LENGTH = 9;
     uint256 public constant PRICE_PRECISION = 10 ** 30;
@@ -45,8 +42,8 @@ contract Reader is Governable {
             if (subAmount >= poolAmount) {
                 return 0;
             }
-            uint256 availableAmount = poolAmount.sub(subAmount);
-            amountIn = availableAmount.mul(priceOut).div(priceIn).mul(10 ** tokenInDecimals).div(10 ** tokenOutDecimals);
+            uint256 availableAmount = poolAmount - subAmount;
+            amountIn = (availableAmount * priceOut) / priceIn * (10 ** tokenInDecimals / 10 ** tokenOutDecimals);
         }
 
         uint256 maxUsdgAmount = _vault.maxUsdgAmounts(_tokenIn);
@@ -56,9 +53,9 @@ contract Reader is Governable {
                 return 0;
             }
 
-            uint256 maxAmountIn = maxUsdgAmount.sub(_vault.usdgAmounts(_tokenIn));
-            maxAmountIn = maxAmountIn.mul(10 ** tokenInDecimals).div(10 ** USDG_DECIMALS);
-            maxAmountIn = maxAmountIn.mul(PRICE_PRECISION).div(priceIn);
+            uint256 maxAmountIn = maxUsdgAmount - _vault.usdgAmounts(_tokenIn);
+            maxAmountIn = maxAmountIn * (10 ** tokenInDecimals) / (10 ** USDG_DECIMALS);
+            maxAmountIn = (maxAmountIn * PRICE_PRECISION) / priceIn;
 
             if (amountIn > maxAmountIn) {
                 return maxAmountIn;
@@ -76,8 +73,8 @@ contract Reader is Governable {
 
         uint256 feeBasisPoints;
         {
-            uint256 usdgAmount = _amountIn.mul(priceIn).div(PRICE_PRECISION);
-            usdgAmount = usdgAmount.mul(10 ** USDG_DECIMALS).div(10 ** tokenInDecimals);
+            uint256 usdgAmount = (_amountIn * priceIn) / PRICE_PRECISION;
+            usdgAmount = usdgAmount * (10 ** USDG_DECIMALS) / (10 ** tokenInDecimals);
 
             bool isStableSwap = _vault.stableTokens(_tokenIn) && _vault.stableTokens(_tokenOut);
             uint256 baseBps = isStableSwap ? _vault.stableSwapFeeBasisPoints() : _vault.swapFeeBasisPoints();
@@ -89,11 +86,11 @@ contract Reader is Governable {
         }
 
         uint256 priceOut = _vault.getMaxPrice(_tokenOut);
-        uint256 amountOut = _amountIn.mul(priceIn).div(priceOut);
-        amountOut = amountOut.mul(10 ** tokenOutDecimals).div(10 ** tokenInDecimals);
+        uint256 amountOut = _amountIn * (priceIn) / priceOut;
+        amountOut = (amountOut * (10 ** tokenOutDecimals)) / (10 ** tokenInDecimals);
 
-        uint256 amountOutAfterFees = amountOut.mul(BASIS_POINTS_DIVISOR.sub(feeBasisPoints)).div(BASIS_POINTS_DIVISOR);
-        uint256 feeAmount = amountOut.sub(amountOutAfterFees);
+        uint256 amountOutAfterFees = amountOut * (BASIS_POINTS_DIVISOR - feeBasisPoints) / BASIS_POINTS_DIVISOR;
+        uint256 feeAmount = amountOut - amountOutAfterFees;
 
         return (amountOutAfterFees, feeAmount);
     }
@@ -102,8 +99,8 @@ contract Reader is Governable {
         uint256 priceIn = _vault.getMinPrice(_tokenIn);
         uint256 tokenInDecimals = _vault.tokenDecimals(_tokenIn);
 
-        uint256 usdgAmount = _amountIn.mul(priceIn).div(PRICE_PRECISION);
-        usdgAmount = usdgAmount.mul(10 ** USDG_DECIMALS).div(10 ** tokenInDecimals);
+        uint256 usdgAmount = (_amountIn * priceIn) / PRICE_PRECISION;
+        usdgAmount = usdgAmount * (10 ** USDG_DECIMALS) / (10 ** tokenInDecimals);
 
         bool isStableSwap = _vault.stableTokens(_tokenIn) && _vault.stableTokens(_tokenOut);
         uint256 baseBps = isStableSwap ? _vault.stableSwapFeeBasisPoints() : _vault.swapFeeBasisPoints();
@@ -191,13 +188,13 @@ contract Reader is Governable {
             uint256 poolAmount = vault.poolAmounts(token);
 
             if (poolAmount > 0) {
-                fundingRates[i * propsLength] = fundingRateFactor.mul(reservedAmount).div(poolAmount);
+                fundingRates[i * propsLength] = (fundingRateFactor * reservedAmount) / poolAmount;
             }
 
             if (vault.cumulativeFundingRates(token) > 0) {
                 uint256 nextRate = vault.getNextFundingRate(token);
                 uint256 baseRate = vault.cumulativeFundingRates(token);
-                fundingRates[i * propsLength + 1] = baseRate.add(nextRate);
+                fundingRates[i * propsLength + 1] = baseRate + nextRate;
             }
         }
 
@@ -209,7 +206,7 @@ contract Reader is Governable {
         for (uint256 i = 0; i < _excludedAccounts.length; i++) {
             address account = _excludedAccounts[i];
             uint256 balance = _token.balanceOf(account);
-            supply = supply.sub(balance);
+            supply = supply - balance;
         }
         return supply;
     }
@@ -219,7 +216,7 @@ contract Reader is Governable {
         for (uint256 i = 0; i < _accounts.length; i++) {
             address account = _accounts[i];
             uint256 balance = _token.balanceOf(account);
-            totalBalance = totalBalance.add(balance);
+            totalBalance = totalBalance + balance;
         }
         return totalBalance;
     }

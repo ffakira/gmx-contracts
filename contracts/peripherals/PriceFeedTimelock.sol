@@ -14,12 +14,9 @@ import "../tokens/interfaces/IMintable.sol";
 import "../tokens/interfaces/IUSDG.sol";
 import "../staking/interfaces/IVester.sol";
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract PriceFeedTimelock {
-    using SafeMath for uint256;
-
     uint256 public constant MAX_BUFFER = 5 days;
 
     uint256 public buffer;
@@ -285,7 +282,7 @@ contract PriceFeedTimelock {
     }
 
     function _setPendingAction(bytes32 _action) private {
-        pendingActions[_action] = block.timestamp.add(buffer);
+        pendingActions[_action] = block.timestamp + buffer;
         emit SignalPendingAction(_action);
     }
 

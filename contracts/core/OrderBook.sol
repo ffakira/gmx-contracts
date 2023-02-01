@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -14,7 +13,6 @@ import "./interfaces/IVault.sol";
 import "./interfaces/IOrderBook.sol";
 
 contract OrderBook is ReentrancyGuard, IOrderBook {
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using Address for address payable;
 
@@ -168,7 +166,7 @@ contract OrderBook is ReentrancyGuard, IOrderBook {
 
         if (_shouldWrap) {
             require(_path[0] == weth, "OrderBook: only weth could be wrapped");
-            require(msg.value == _executionFee.add(_amountIn), "OrderBook: incorrect value transferred");
+            require(msg.value == _executionFee + _amountIn, "OrderBook: incorrect value transferred");
         } else {
             require(msg.value == _executionFee, "OrderBook: incorrect execution fee transferred");
             IRouter(router).pluginTransfer(_path[0], msg.sender, address(this), _amountIn);
@@ -198,7 +196,7 @@ contract OrderBook is ReentrancyGuard, IOrderBook {
             _shouldUnwrap,
             _executionFee
         );
-        swapOrdersIndex[_account] = _orderIndex.add(1);
+        swapOrdersIndex[_account] = _orderIndex + 1;
         swapOrders[_account][_orderIndex] = order;
 
         emit CreateSwapOrder(
@@ -237,7 +235,7 @@ contract OrderBook is ReentrancyGuard, IOrderBook {
         delete swapOrders[msg.sender][_orderIndex];
 
         if (order.path[0] == weth) {
-            _transferOutETH(order.executionFee.add(order.amountIn), payable(msg.sender));
+            _transferOutETH(order.executionFee + order.amountIn, payable(msg.sender));
         } else {
             IERC20(order.path[0]).safeTransfer(msg.sender, order.amountIn);
             _transferOutETH(order.executionFee, payable(msg.sender));
@@ -262,7 +260,7 @@ contract OrderBook is ReentrancyGuard, IOrderBook {
         uint256 otherTokenPrice = IVault(vault).getMinPrice(_otherToken);
 
         uint256 otherTokenDecimals = IVault(vault).tokenDecimals(_otherToken);
-        return redemptionAmount.mul(otherTokenPrice).div(10 ** otherTokenDecimals);
+        return (redemptionAmount * otherTokenPrice) / (10 ** otherTokenDecimals);
     }
 
     function validateSwapOrderPriceWithTriggerAboveThreshold(
@@ -297,7 +295,7 @@ contract OrderBook is ReentrancyGuard, IOrderBook {
             tokenBPrice = IVault(vault).getMaxPrice(tokenB);
         }
 
-        uint256 currentRatio = tokenBPrice.mul(PRICE_PRECISION).div(tokenAPrice);
+        uint256 currentRatio = (tokenBPrice * PRICE_PRECISION) / tokenAPrice;
 
         bool isValid = currentRatio > _triggerRatio;
         return isValid;
@@ -449,7 +447,7 @@ contract OrderBook is ReentrancyGuard, IOrderBook {
         require(_executionFee >= minExecutionFee, "OrderBook: insufficient execution fee");
         if (_shouldWrap) {
             require(_path[0] == weth, "OrderBook: only weth could be wrapped");
-            require(msg.value == _executionFee.add(_amountIn), "OrderBook: incorrect value transferred");
+            require(msg.value == _executionFee + _amountIn, "OrderBook: incorrect value transferred");
         } else {
             require(msg.value == _executionFee, "OrderBook: incorrect execution fee transferred");
             IRouter(router).pluginTransfer(_path[0], msg.sender, address(this), _amountIn);
@@ -509,7 +507,7 @@ contract OrderBook is ReentrancyGuard, IOrderBook {
             _triggerAboveThreshold,
             _executionFee
         );
-        increaseOrdersIndex[_account] = _orderIndex.add(1);
+        increaseOrdersIndex[_account] = _orderIndex + 1;
         increaseOrders[_account][_orderIndex] = order;
 
         emit CreateIncreaseOrder(
@@ -554,7 +552,7 @@ contract OrderBook is ReentrancyGuard, IOrderBook {
         delete increaseOrders[msg.sender][_orderIndex];
 
         if (order.purchaseToken == weth) {
-            _transferOutETH(order.executionFee.add(order.purchaseTokenAmount), payable(msg.sender));
+            _transferOutETH(order.executionFee + order.purchaseTokenAmount, payable(msg.sender));
         } else {
             IERC20(order.purchaseToken).safeTransfer(msg.sender, order.purchaseTokenAmount);
             _transferOutETH(order.executionFee, payable(msg.sender));
@@ -670,7 +668,7 @@ contract OrderBook is ReentrancyGuard, IOrderBook {
             _triggerAboveThreshold,
             msg.value
         );
-        decreaseOrdersIndex[_account] = _orderIndex.add(1);
+        decreaseOrdersIndex[_account] = _orderIndex + 1;
         decreaseOrders[_account][_orderIndex] = order;
 
         emit CreateDecreaseOrder(

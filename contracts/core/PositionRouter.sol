@@ -9,14 +9,12 @@ import "./interfaces/IPositionRouterCallbackReceiver.sol";
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "../peripherals/interfaces/ITimelock.sol";
 import "./BasePositionManager.sol";
 
 contract PositionRouter is BasePositionManager, IPositionRouter {
     using SafeERC20 for IERC20;
-    using SafeMath for uint256;
     using Address for address;
 
     struct IncreasePositionRequest {
@@ -251,7 +249,7 @@ contract PositionRouter is BasePositionManager, IPositionRouter {
         _transferInETH();
         _setTraderReferralCode(_referralCode);
 
-        uint256 amountIn = msg.value.sub(_executionFee);
+        uint256 amountIn = msg.value - _executionFee;
 
         return _createIncreasePosition(
             msg.sender,
@@ -352,8 +350,8 @@ contract PositionRouter is BasePositionManager, IPositionRouter {
             request.isLong,
             request.acceptablePrice,
             request.executionFee,
-            block.number.sub(request.blockNumber),
-            block.timestamp.sub(request.blockTime)
+            block.number - request.blockNumber,
+            block.timestamp - request.blockTime
         );
 
         _callRequestCallback(request.callbackTarget, _key, true, true);
@@ -389,8 +387,8 @@ contract PositionRouter is BasePositionManager, IPositionRouter {
             request.isLong,
             request.acceptablePrice,
             request.executionFee,
-            block.number.sub(request.blockNumber),
-            block.timestamp.sub(request.blockTime)
+            block.number - request.blockNumber,
+            block.timestamp - request.blockTime
         );
 
         _callRequestCallback(request.callbackTarget, _key, false, true);
@@ -436,8 +434,8 @@ contract PositionRouter is BasePositionManager, IPositionRouter {
             request.acceptablePrice,
             request.minOut,
             request.executionFee,
-            block.number.sub(request.blockNumber),
-            block.timestamp.sub(request.blockTime)
+            block.number - request.blockNumber,
+            block.timestamp - request.blockTime
         );
 
         _callRequestCallback(request.callbackTarget, _key, true, false);
@@ -468,8 +466,8 @@ contract PositionRouter is BasePositionManager, IPositionRouter {
             request.acceptablePrice,
             request.minOut,
             request.executionFee,
-            block.number.sub(request.blockNumber),
-            block.timestamp.sub(request.blockTime)
+            block.number - request.blockNumber,
+            block.timestamp - request.blockTime
         );
 
         _callRequestCallback(request.callbackTarget, _key, false, false);
@@ -498,7 +496,7 @@ contract PositionRouter is BasePositionManager, IPositionRouter {
     }
 
     function _validateExecution(uint256 _positionBlockNumber, uint256 _positionBlockTime, address _account) internal view returns (bool) {
-        if (_positionBlockTime.add(maxTimeDelay) <= block.timestamp) {
+        if (_positionBlockTime + maxTimeDelay <= block.timestamp) {
             revert("expired");
         }
 
@@ -509,12 +507,12 @@ contract PositionRouter is BasePositionManager, IPositionRouter {
         }
 
         if (isKeeperCall) {
-            return _positionBlockNumber.add(minBlockDelayKeeper) <= block.number;
+            return _positionBlockNumber + minBlockDelayKeeper <= block.number;
         }
 
         require(msg.sender == _account, "403");
 
-        require(_positionBlockTime.add(minTimeDelayPublic) <= block.timestamp, "delay");
+        require(_positionBlockTime + minTimeDelayPublic <= block.timestamp, "delay");
 
         return true;
     }
@@ -527,12 +525,12 @@ contract PositionRouter is BasePositionManager, IPositionRouter {
         }
 
         if (isKeeperCall) {
-            return _positionBlockNumber.add(minBlockDelayKeeper) <= block.number;
+            return _positionBlockNumber + minBlockDelayKeeper <= block.number;
         }
 
         require(msg.sender == _account, "403");
 
-        require(_positionBlockTime.add(minTimeDelayPublic) <= block.timestamp, "delay");
+        require(_positionBlockTime + minTimeDelayPublic <= block.timestamp, "delay");
 
         return true;
     }
@@ -589,7 +587,7 @@ contract PositionRouter is BasePositionManager, IPositionRouter {
 
     function _storeIncreasePositionRequest(IncreasePositionRequest memory _request) internal returns (uint256, bytes32) {
         address account = _request.account;
-        uint256 index = increasePositionsIndex[account].add(1);
+        uint256 index = increasePositionsIndex[account] + 1;
         increasePositionsIndex[account] = index;
         bytes32 key = getRequestKey(account, index);
 
@@ -601,7 +599,7 @@ contract PositionRouter is BasePositionManager, IPositionRouter {
 
     function _storeDecreasePositionRequest(DecreasePositionRequest memory _request) internal returns (uint256, bytes32) {
         address account = _request.account;
-        uint256 index = decreasePositionsIndex[account].add(1);
+        uint256 index = decreasePositionsIndex[account] + 1;
         decreasePositionsIndex[account] = index;
         bytes32 key = getRequestKey(account, index);
 

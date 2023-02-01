@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
@@ -11,8 +10,6 @@ import "./interfaces/IGMT.sol";
 import "../peripherals/interfaces/ITimelockTarget.sol";
 
 contract Treasury is ReentrancyGuard, ITimelockTarget {
-    using SafeMath for uint256;
-
     uint256 constant PRECISION = 1000000;
     uint256 constant BASIS_POINTS_DIVISOR = 10000;
 
@@ -107,20 +104,20 @@ contract Treasury is ReentrancyGuard, ITimelockTarget {
         require(isSwapActive, "Treasury: swap is no longer active");
         require(_busdAmount > 0, "Treasury: invalid _busdAmount");
 
-        busdReceived = busdReceived.add(_busdAmount);
+        busdReceived = busdReceived + _busdAmount;
         require(busdReceived <= busdHardCap, "Treasury: busdHardCap exceeded");
 
-        swapAmounts[account] = swapAmounts[account].add(_busdAmount);
+        swapAmounts[account] = swapAmounts[account] + _busdAmount;
         require(swapAmounts[account] <= busdSlotCap, "Treasury: busdSlotCap exceeded");
 
         // receive BUSD
         uint256 busdBefore = IERC20(busd).balanceOf(address(this));
         IERC20(busd).transferFrom(account, address(this), _busdAmount);
         uint256 busdAfter = IERC20(busd).balanceOf(address(this));
-        require(busdAfter.sub(busdBefore) == _busdAmount, "Treasury: invalid transfer");
+        require(busdAfter - busdBefore == _busdAmount, "Treasury: invalid transfer");
 
         // send GMT
-        uint256 gmtAmount = _busdAmount.mul(PRECISION).div(gmtPresalePrice);
+        uint256 gmtAmount = (_busdAmount * PRECISION) / gmtPresalePrice;
         IERC20(gmt).transfer(account, gmtAmount);
     }
 
@@ -128,8 +125,8 @@ contract Treasury is ReentrancyGuard, ITimelockTarget {
         require(!isLiquidityAdded, "Treasury: liquidity already added");
         isLiquidityAdded = true;
 
-        uint256 busdAmount = busdReceived.mul(busdBasisPoints).div(BASIS_POINTS_DIVISOR);
-        uint256 gmtAmount = busdAmount.mul(PRECISION).div(gmtListingPrice);
+        uint256 busdAmount = (busdReceived * busdBasisPoints) / BASIS_POINTS_DIVISOR;
+        uint256 gmtAmount = (busdAmount * PRECISION) / gmtListingPrice;
 
         IERC20(busd).approve(router, busdAmount);
         IERC20(gmt).approve(router, gmtAmount);
@@ -149,7 +146,7 @@ contract Treasury is ReentrancyGuard, ITimelockTarget {
 
         IGMT(gmt).beginMigration();
 
-        uint256 fundAmount = busdReceived.sub(busdAmount);
+        uint256 fundAmount = busdReceived - busdAmount;
         IERC20(busd).transfer(fund, fundAmount);
     }
 

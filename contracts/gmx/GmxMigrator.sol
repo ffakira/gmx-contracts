@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
@@ -11,8 +10,6 @@ import "./interfaces/IAmmRouter.sol";
 import "./interfaces/IGmxMigrator.sol";
 
 contract GmxMigrator is ReentrancyGuard, IGmxMigrator {
-    using SafeMath for uint256;
-
     bool public isInitialized;
     bool public isMigrationActive = true;
     bool public hasMaxMigrationLimit = false;
@@ -132,15 +129,15 @@ contract GmxMigrator is ReentrancyGuard, IGmxMigrator {
         require(_tokenAmount > 0, "GmxMigrator: invalid tokenAmount");
 
         if (hasMaxMigrationLimit) {
-            migratedAmounts[msg.sender][_token] = migratedAmounts[msg.sender][_token].add(_tokenAmount);
+            migratedAmounts[msg.sender][_token] = migratedAmounts[msg.sender][_token] + _tokenAmount;
             require(migratedAmounts[msg.sender][_token] <= maxMigrationAmounts[msg.sender][_token], "GmxMigrator: maxMigrationAmount exceeded");
         }
 
         uint256 tokenPrice = getTokenPrice(_token);
-        uint256 mintAmount = _tokenAmount.mul(tokenPrice).div(gmxPrice);
+        uint256 mintAmount = (_tokenAmount * tokenPrice) / gmxPrice;
         require(mintAmount > 0, "GmxMigrator: invalid mintAmount");
 
-        tokenAmounts[_token] = tokenAmounts[_token].add(_tokenAmount);
+        tokenAmounts[_token] = tokenAmounts[_token] + _tokenAmount;
         require(tokenAmounts[_token] < caps[_token], "GmxMigrator: token cap exceeded");
 
         IERC20(_token).transferFrom(msg.sender, address(this), _tokenAmount);

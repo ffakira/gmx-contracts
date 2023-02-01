@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -15,7 +14,6 @@ import "../core/interfaces/IGlpManager.sol";
 import "../access/Governable.sol";
 
 contract RewardRouter is ReentrancyGuard, Governable {
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using Address for address payable;
 
@@ -262,7 +260,7 @@ contract RewardRouter is ReentrancyGuard, Governable {
 
         uint256 stakedBnGmx = IRewardTracker(feeGmxTracker).depositBalances(_account, bnGmx);
         if (stakedBnGmx > 0) {
-            uint256 reductionAmount = stakedBnGmx.mul(_amount).div(balance);
+            uint256 reductionAmount = stakedBnGmx * _amount / balance;
             IRewardTracker(feeGmxTracker).unstakeForAccount(_account, bnGmx, reductionAmount, _account);
             IMintable(bnGmx).burn(_account, reductionAmount);
         }

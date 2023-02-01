@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -14,7 +13,6 @@ import "../peripherals/interfaces/ITimelock.sol";
 import "./BasePositionManager.sol";
 
 contract PositionManager is BasePositionManager {
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     address public orderBook;
@@ -307,13 +305,13 @@ contract PositionManager is BasePositionManager {
         // if there is no existing position, do not charge a fee
         if (size == 0) { return; }
 
-        uint256 nextSize = size.add(_sizeDelta);
+        uint256 nextSize = size + _sizeDelta;
         uint256 collateralDelta = _vault.tokenToUsdMin(_purchaseToken, _purchaseTokenAmount);
-        uint256 nextCollateral = collateral.add(collateralDelta);
+        uint256 nextCollateral = collateral + collateralDelta;
 
-        uint256 prevLeverage = size.mul(BASIS_POINTS_DIVISOR).div(collateral);
+        uint256 prevLeverage = (size * BASIS_POINTS_DIVISOR) / collateral;
         // allow for a maximum of a increasePositionBufferBps decrease since there might be some swap fees taken from the collateral
-        uint256 nextLeverageWithBuffer = nextSize.mul(BASIS_POINTS_DIVISOR + increasePositionBufferBps).div(nextCollateral);
+        uint256 nextLeverageWithBuffer = (nextSize * (BASIS_POINTS_DIVISOR + increasePositionBufferBps)) / nextCollateral;
 
         require(nextLeverageWithBuffer >= prevLeverage, "PositionManager: long leverage decrease");
     }

@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -12,7 +11,6 @@ import "./interfaces/IRewardTracker.sol";
 import "../access/Governable.sol";
 
 contract BonusDistributor is IRewardDistributor, ReentrancyGuard, Governable {
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     uint256 public constant BASIS_POINTS_DIVISOR = 10000;
@@ -62,7 +60,7 @@ contract BonusDistributor is IRewardDistributor, ReentrancyGuard, Governable {
 
     function tokensPerInterval() public view override returns (uint256) {
         uint256 supply = IERC20(rewardTracker).totalSupply();
-        return supply.mul(bonusMultiplierBasisPoints).div(BASIS_POINTS_DIVISOR).div(BONUS_DURATION);
+        return supply * bonusMultiplierBasisPoints / BASIS_POINTS_DIVISOR / BONUS_DURATION;
     }
 
     function pendingRewards() public view override returns (uint256) {
@@ -71,9 +69,9 @@ contract BonusDistributor is IRewardDistributor, ReentrancyGuard, Governable {
         }
 
         uint256 supply = IERC20(rewardTracker).totalSupply();
-        uint256 timeDiff = block.timestamp.sub(lastDistributionTime);
+        uint256 timeDiff = block.timestamp - lastDistributionTime;
 
-        return timeDiff.mul(supply).mul(bonusMultiplierBasisPoints).div(BASIS_POINTS_DIVISOR).div(BONUS_DURATION);
+        return timeDiff * supply * bonusMultiplierBasisPoints / BASIS_POINTS_DIVISOR / BONUS_DURATION;
     }
 
     function distribute() external override returns (uint256) {
