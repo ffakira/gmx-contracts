@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.12;
+pragma solidity ^0.8.0;
 
 import "./interfaces/ITimelockTarget.sol";
 import "./interfaces/ITimelock.sol";
@@ -17,8 +17,8 @@ import "../tokens/interfaces/IUSDG.sol";
 import "../staking/interfaces/IVester.sol";
 import "../staking/interfaces/IRewardRouterV2.sol";
 
-import "../libraries/math/SafeMath.sol";
-import "../libraries/token/IERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract Timelock is ITimelock {
     using SafeMath for uint256;
@@ -96,7 +96,7 @@ contract Timelock is ITimelock {
         uint256 _maxTokenSupply,
         uint256 _marginFeeBasisPoints,
         uint256 _maxMarginFeeBasisPoints
-    ) public {
+    ) {
         require(_buffer <= MAX_BUFFER, "Timelock: invalid _buffer");
         admin = _admin;
         buffer = _buffer;

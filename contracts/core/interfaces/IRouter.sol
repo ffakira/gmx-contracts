@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.12;
+pragma solidity ^0.8.0;
 
 interface IRouter {
     function addPlugin(address _plugin) external;
@@ -8,4 +8,6 @@ interface IRouter {
     function pluginIncreasePosition(address _account, address _collateralToken, address _indexToken, uint256 _sizeDelta, bool _isLong) external;
     function pluginDecreasePosition(address _account, address _collateralToken, address _indexToken, uint256 _collateralDelta, uint256 _sizeDelta, bool _isLong, address _receiver) external returns (uint256);
     function swap(address[] memory _path, uint256 _amountIn, uint256 _minOut, address _receiver) external;
+
+    event Swap(address account, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut);
 }

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.12;
+pragma solidity ^0.8.0;
 
-import "../libraries/math/SafeMath.sol";
-import "../libraries/token/IERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../core/interfaces/IGlpManager.sol";
 
@@ -34,7 +34,7 @@ contract StakedGlp {
         IGlpManager _glpManager,
         address _stakedGlpTracker,
         address _feeGlpTracker
-    ) public {
+    ) {
         glp = _glp;
         glpManager = _glpManager;
         stakedGlpTracker = _stakedGlpTracker;

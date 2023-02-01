@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.12;
+pragma solidity ^0.8.0;
 
-import "../libraries/math/SafeMath.sol";
-import "../libraries/token/IERC20.sol";
-import "../libraries/token/SafeERC20.sol";
-import "../libraries/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "./interfaces/IRewardTracker.sol";
 import "./interfaces/IVester.sol";
@@ -59,7 +59,7 @@ contract Vester is IVester, IERC20, ReentrancyGuard, Governable {
         address _pairToken,
         address _claimableToken,
         address _rewardTracker
-    ) public {
+    ) {
         name = _name;
         symbol = _symbol;
 
@@ -243,7 +243,7 @@ contract Vester is IVester, IERC20, ReentrancyGuard, Governable {
     }
 
     // empty implementation, tokens are non-transferrable
-    function transfer(address /* recipient */, uint256 /* amount */) public override returns (bool) {
+    function transfer(address /* recipient */, uint256 /* amount */) public pure override returns (bool) {
         revert("Vester: non-transferrable");
     }
 

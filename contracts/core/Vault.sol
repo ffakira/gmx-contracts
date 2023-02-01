@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.12;
+pragma solidity ^0.8.0;
 
-import "../libraries/math/SafeMath.sol";
-import "../libraries/token/IERC20.sol";
-import "../libraries/token/SafeERC20.sol";
-import "../libraries/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "../tokens/interfaces/IUSDG.sol";
 import "./interfaces/IVault.sol";
@@ -137,83 +137,9 @@ contract Vault is ReentrancyGuard, IVault {
 
     mapping (uint256 => string) public errors;
 
-    event BuyUSDG(address account, address token, uint256 tokenAmount, uint256 usdgAmount, uint256 feeBasisPoints);
-    event SellUSDG(address account, address token, uint256 usdgAmount, uint256 tokenAmount, uint256 feeBasisPoints);
-    event Swap(address account, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut, uint256 amountOutAfterFees, uint256 feeBasisPoints);
-
-    event IncreasePosition(
-        bytes32 key,
-        address account,
-        address collateralToken,
-        address indexToken,
-        uint256 collateralDelta,
-        uint256 sizeDelta,
-        bool isLong,
-        uint256 price,
-        uint256 fee
-    );
-    event DecreasePosition(
-        bytes32 key,
-        address account,
-        address collateralToken,
-        address indexToken,
-        uint256 collateralDelta,
-        uint256 sizeDelta,
-        bool isLong,
-        uint256 price,
-        uint256 fee
-    );
-    event LiquidatePosition(
-        bytes32 key,
-        address account,
-        address collateralToken,
-        address indexToken,
-        bool isLong,
-        uint256 size,
-        uint256 collateral,
-        uint256 reserveAmount,
-        int256 realisedPnl,
-        uint256 markPrice
-    );
-    event UpdatePosition(
-        bytes32 key,
-        uint256 size,
-        uint256 collateral,
-        uint256 averagePrice,
-        uint256 entryFundingRate,
-        uint256 reserveAmount,
-        int256 realisedPnl,
-        uint256 markPrice
-    );
-    event ClosePosition(
-        bytes32 key,
-        uint256 size,
-        uint256 collateral,
-        uint256 averagePrice,
-        uint256 entryFundingRate,
-        uint256 reserveAmount,
-        int256 realisedPnl
-    );
-
-    event UpdateFundingRate(address token, uint256 fundingRate);
-    event UpdatePnl(bytes32 key, bool hasProfit, uint256 delta);
-
-    event CollectSwapFees(address token, uint256 feeUsd, uint256 feeTokens);
-    event CollectMarginFees(address token, uint256 feeUsd, uint256 feeTokens);
-
-    event DirectPoolDeposit(address token, uint256 amount);
-    event IncreasePoolAmount(address token, uint256 amount);
-    event DecreasePoolAmount(address token, uint256 amount);
-    event IncreaseUsdgAmount(address token, uint256 amount);
-    event DecreaseUsdgAmount(address token, uint256 amount);
-    event IncreaseReservedAmount(address token, uint256 amount);
-    event DecreaseReservedAmount(address token, uint256 amount);
-    event IncreaseGuaranteedUsd(address token, uint256 amount);
-    event DecreaseGuaranteedUsd(address token, uint256 amount);
-
     // once the parameters are verified to be working correctly,
     // gov should be set to a timelock contract or a governance contract
-    constructor() public {
+    constructor() {
         gov = msg.sender;
     }
 

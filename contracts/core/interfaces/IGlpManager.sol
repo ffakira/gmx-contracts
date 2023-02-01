@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.12;
+pragma solidity ^0.8.0;
 
 import "./IVault.sol";
 
@@ -17,4 +17,24 @@ interface IGlpManager {
     function removeLiquidityForAccount(address _account, address _tokenOut, uint256 _glpAmount, uint256 _minOut, address _receiver) external returns (uint256);
     function setShortsTrackerAveragePriceWeight(uint256 _shortsTrackerAveragePriceWeight) external;
     function setCooldownDuration(uint256 _cooldownDuration) external;
+
+    event AddLiquidity(
+        address account,
+        address token,
+        uint256 amount,
+        uint256 aumInUsdg,
+        uint256 glpSupply,
+        uint256 usdgAmount,
+        uint256 mintAmount
+    );
+
+    event RemoveLiquidity(
+        address account,
+        address token,
+        uint256 glpAmount,
+        uint256 aumInUsdg,
+        uint256 glpSupply,
+        uint256 usdgAmount,
+        uint256 amountOut
+    );
 }

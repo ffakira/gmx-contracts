@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.12;
+pragma solidity ^0.8.0;
 
-import "../libraries/token/IERC20.sol";
-import "../libraries/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 /**
  * @dev Implementation of the {IERC20} interface.
@@ -63,7 +63,7 @@ contract FaucetToken is IERC20 {
         string memory symbol,
         uint8 decimals,
         uint256 dropletAmount
-    ) public {
+    ) {
         _name = name;
         _symbol = symbol;
         _decimals = decimals;
@@ -345,6 +345,6 @@ contract FaucetToken is IERC20 {
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual { }
 
     function _msgSender() internal view virtual returns (address payable) {
-        return msg.sender;
+        return payable(msg.sender);
     }
 }

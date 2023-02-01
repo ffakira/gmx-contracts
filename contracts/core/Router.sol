@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.12;
+pragma solidity ^0.8.0;
 
-import "../libraries/math/SafeMath.sol";
-import "../libraries/token/IERC20.sol";
-import "../libraries/token/SafeERC20.sol";
-import "../libraries/utils/Address.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
 import "../tokens/interfaces/IWETH.sol";
 import "./interfaces/IVault.sol";
@@ -26,14 +26,12 @@ contract Router is IRouter {
     mapping (address => bool) public plugins;
     mapping (address => mapping (address => bool)) public approvedPlugins;
 
-    event Swap(address account, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut);
-
     modifier onlyGov() {
         require(msg.sender == gov, "Router: forbidden");
         _;
     }
 
-    constructor(address _vault, address _usdg, address _weth) public {
+    constructor(address _vault, address _usdg, address _weth) {
         vault = _vault;
         usdg = _usdg;
         weth = _weth;

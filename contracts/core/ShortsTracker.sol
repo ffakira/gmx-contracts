@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.12;
+pragma solidity ^0.8.0;
 
-import "../libraries/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "../access/Governable.sol";
 import "./interfaces/IShortsTracker.sol";
@@ -28,7 +28,7 @@ contract ShortsTracker is Governable, IShortsTracker {
         _;
     }
 
-    constructor(address _vault) public {
+    constructor(address _vault) {
         vault = IVault(_vault);
     }
 

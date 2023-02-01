@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.12;
+pragma solidity ^0.8.0;
 
 import "../tokens/Token.sol";
-import "../libraries/token/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IPancakeRouter.sol";
 
 contract PancakeRouter is IPancakeRouter {
     address public pair;
 
-    constructor(address _pair) public {
+    constructor(address _pair) {
         pair = _pair;
     }
 

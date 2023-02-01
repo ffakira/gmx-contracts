@@ -1,16 +1,15 @@
-
 // SPDX-License-Identifier: MIT
 
-import "hardhat/console.sol";
+pragma solidity ^0.8.0;
 
-pragma solidity ^0.6.0;
+import "hardhat/console.sol";
 
 contract MaliciousTraderTest {
     event Received();
 
     address public positionRouter;
 
-    constructor(address _positionRouter) public {
+    constructor(address _positionRouter) {
         positionRouter = _positionRouter;
     }
 

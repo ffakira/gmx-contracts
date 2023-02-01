@@ -1,17 +1,22 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
 import "./interfaces/IRouter.sol";
 import "./interfaces/IVault.sol";
 import "./interfaces/IPositionRouter.sol";
 import "./interfaces/IPositionRouterCallbackReceiver.sol";
 
-import "../libraries/utils/Address.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "../peripherals/interfaces/ITimelock.sol";
 import "./BasePositionManager.sol";
 
 contract PositionRouter is BasePositionManager, IPositionRouter {
+    using SafeERC20 for IERC20;
+    using SafeMath for uint256;
     using Address for address;
 
     struct IncreasePositionRequest {
@@ -71,106 +76,6 @@ contract PositionRouter is BasePositionManager, IPositionRouter {
     mapping (address => uint256) public decreasePositionsIndex;
     mapping (bytes32 => DecreasePositionRequest) public decreasePositionRequests;
 
-    event CreateIncreasePosition(
-        address indexed account,
-        address[] path,
-        address indexToken,
-        uint256 amountIn,
-        uint256 minOut,
-        uint256 sizeDelta,
-        bool isLong,
-        uint256 acceptablePrice,
-        uint256 executionFee,
-        uint256 index,
-        uint256 queueIndex,
-        uint256 blockNumber,
-        uint256 blockTime,
-        uint256 gasPrice
-    );
-
-    event ExecuteIncreasePosition(
-        address indexed account,
-        address[] path,
-        address indexToken,
-        uint256 amountIn,
-        uint256 minOut,
-        uint256 sizeDelta,
-        bool isLong,
-        uint256 acceptablePrice,
-        uint256 executionFee,
-        uint256 blockGap,
-        uint256 timeGap
-    );
-
-    event CancelIncreasePosition(
-        address indexed account,
-        address[] path,
-        address indexToken,
-        uint256 amountIn,
-        uint256 minOut,
-        uint256 sizeDelta,
-        bool isLong,
-        uint256 acceptablePrice,
-        uint256 executionFee,
-        uint256 blockGap,
-        uint256 timeGap
-    );
-
-    event CreateDecreasePosition(
-        address indexed account,
-        address[] path,
-        address indexToken,
-        uint256 collateralDelta,
-        uint256 sizeDelta,
-        bool isLong,
-        address receiver,
-        uint256 acceptablePrice,
-        uint256 minOut,
-        uint256 executionFee,
-        uint256 index,
-        uint256 queueIndex,
-        uint256 blockNumber,
-        uint256 blockTime
-    );
-
-    event ExecuteDecreasePosition(
-        address indexed account,
-        address[] path,
-        address indexToken,
-        uint256 collateralDelta,
-        uint256 sizeDelta,
-        bool isLong,
-        address receiver,
-        uint256 acceptablePrice,
-        uint256 minOut,
-        uint256 executionFee,
-        uint256 blockGap,
-        uint256 timeGap
-    );
-
-    event CancelDecreasePosition(
-        address indexed account,
-        address[] path,
-        address indexToken,
-        uint256 collateralDelta,
-        uint256 sizeDelta,
-        bool isLong,
-        address receiver,
-        uint256 acceptablePrice,
-        uint256 minOut,
-        uint256 executionFee,
-        uint256 blockGap,
-        uint256 timeGap
-    );
-
-    event SetPositionKeeper(address indexed account, bool isActive);
-    event SetMinExecutionFee(uint256 minExecutionFee);
-    event SetIsLeverageEnabled(bool isLeverageEnabled);
-    event SetDelayValues(uint256 minBlockDelayKeeper, uint256 minTimeDelayPublic, uint256 maxTimeDelay);
-    event SetRequestKeysStartValues(uint256 increasePositionRequestKeysStart, uint256 decreasePositionRequestKeysStart);
-    event SetCallbackGasLimit(uint256 callbackGasLimit);
-    event Callback(address callbackTarget, bool success);
-
     modifier onlyPositionKeeper() {
         require(isPositionKeeper[msg.sender], "403");
         _;
@@ -183,7 +88,7 @@ contract PositionRouter is BasePositionManager, IPositionRouter {
         address _shortsTracker,
         uint256 _depositFee,
         uint256 _minExecutionFee
-    ) public BasePositionManager(_vault, _router, _shortsTracker, _weth, _depositFee) {
+    ) BasePositionManager(_vault, _router, _shortsTracker, _weth, _depositFee) {
         minExecutionFee = _minExecutionFee;
     }
 

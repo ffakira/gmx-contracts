@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.12;
+pragma solidity ^0.8.0;
 
 import "./interfaces/IPancakeFactory.sol";
 
@@ -12,7 +12,7 @@ contract PancakeFactory is IPancakeFactory {
     address public bnbBusdPair;
     address public btcBnbPair;
 
-    constructor(address[] memory _addresses) public {
+    constructor(address[] memory _addresses) {
         btc = _addresses[0];
         bnb = _addresses[1];
         busd = _addresses[2];

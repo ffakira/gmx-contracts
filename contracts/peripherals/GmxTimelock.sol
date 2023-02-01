@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.12;
+pragma solidity ^0.8.0;
 
 import "./interfaces/ITimelockTarget.sol";
 import "./interfaces/IGmxTimelock.sol";
@@ -16,8 +16,8 @@ import "../tokens/interfaces/IMintable.sol";
 import "../tokens/interfaces/IUSDG.sol";
 import "../staking/interfaces/IVester.sol";
 
-import "../libraries/math/SafeMath.sol";
-import "../libraries/token/IERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract GmxTimelock is IGmxTimelock {
     using SafeMath for uint256;
@@ -97,7 +97,7 @@ contract GmxTimelock is IGmxTimelock {
         address _tokenManager,
         address _mintReceiver,
         uint256 _maxTokenSupply
-    ) public {
+    ) {
         require(_buffer <= MAX_BUFFER, "GmxTimelock: invalid _buffer");
         require(_longBuffer <= MAX_BUFFER, "GmxTimelock: invalid _longBuffer");
         admin = _admin;

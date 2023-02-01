@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.12;
+pragma solidity ^0.8.0;
 
-import "../libraries/math/SafeMath.sol";
-import "../libraries/token/IERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./interfaces/IGMT.sol";
 import "../peripherals/interfaces/ITimelockTarget.sol";
 
@@ -50,7 +50,7 @@ contract GMT is IERC20, IGMT, ITimelockTarget {
         _;
     }
 
-    constructor(uint256 _initialSupply) public {
+    constructor(uint256 _initialSupply) {
         gov = msg.sender;
         admins[msg.sender] = true;
         _mint(msg.sender, _initialSupply);

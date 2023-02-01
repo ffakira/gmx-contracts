@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
-import "../libraries/math/SafeMath.sol";
-import "../libraries/token/IERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "../tokens/interfaces/IWETH.sol";
-import "../libraries/token/SafeERC20.sol";
-import "../libraries/utils/Address.sol";
-import "../libraries/utils/ReentrancyGuard.sol";
 
 import "./interfaces/IRouter.sol";
 import "./interfaces/IVault.sol";
@@ -49,34 +49,6 @@ contract BasePositionManager is IBasePositionManager, ReentrancyGuard, Governabl
     mapping (address => uint256) public override maxGlobalLongSizes;
     mapping (address => uint256) public override maxGlobalShortSizes;
 
-    event SetDepositFee(uint256 depositFee);
-    event SetIncreasePositionBufferBps(uint256 increasePositionBufferBps);
-    event SetReferralStorage(address referralStorage);
-    event SetAdmin(address admin);
-    event WithdrawFees(address token, address receiver, uint256 amount);
-
-    event SetMaxGlobalSizes(
-        address[] tokens,
-        uint256[] longSizes,
-        uint256[] shortSizes
-    );
-
-    event IncreasePositionReferral(
-        address account,
-        uint256 sizeDelta,
-        uint256 marginFeeBasisPoints,
-        bytes32 referralCode,
-        address referrer
-    );
-
-    event DecreasePositionReferral(
-        address account,
-        uint256 sizeDelta,
-        uint256 marginFeeBasisPoints,
-        bytes32 referralCode,
-        address referrer
-    );
-
     modifier onlyAdmin() {
         require(msg.sender == admin, "BasePositionManager: forbidden");
         _;
@@ -88,7 +60,7 @@ contract BasePositionManager is IBasePositionManager, ReentrancyGuard, Governabl
         address _shortsTracker,
         address _weth,
         uint256 _depositFee
-    ) public {
+    ) {
         vault = _vault;
         router = _router;
         weth = _weth;
@@ -282,7 +254,7 @@ contract BasePositionManager is IBasePositionManager, ReentrancyGuard, Governabl
         // use `send` instead of `transfer` to not revert whole transaction in case ETH transfer was failed
         // it has limit of 2300 gas
         // this is to avoid front-running
-        _receiver.send(_amountOut);
+        _receiver.transfer(_amountOut);
     }
 
     function _collectFees(

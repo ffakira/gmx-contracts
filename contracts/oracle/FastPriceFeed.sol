@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-import "../libraries/math/SafeMath.sol";
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "./interfaces/ISecondaryPriceFeed.sol";
 import "./interfaces/IFastPriceFeed.sol";
@@ -8,8 +10,6 @@ import "./interfaces/IFastPriceEvents.sol";
 import "../core/interfaces/IVaultPriceFeed.sol";
 import "../core/interfaces/IPositionRouter.sol";
 import "../access/Governable.sol";
-
-pragma solidity 0.6.12;
 
 contract FastPriceFeed is ISecondaryPriceFeed, IFastPriceFeed, Governable {
     using SafeMath for uint256;
@@ -32,7 +32,7 @@ contract FastPriceFeed is ISecondaryPriceFeed, IFastPriceFeed, Governable {
 
     // uint256(~0) is 256 bits of 1s
     // shift the 1s by (256 - 32) to get (256 - 32) 0s followed by 32 1s
-    uint256 constant public BITMASK_32 = uint256(~0) >> (256 - 32);
+    uint256 constant public BITMASK_32 = ~uint256(0) >> (256 - 32);
 
     uint256 public constant BASIS_POINTS_DIVISOR = 10000;
 
@@ -110,7 +110,7 @@ contract FastPriceFeed is ISecondaryPriceFeed, IFastPriceFeed, Governable {
       address _fastPriceEvents,
       address _tokenManager,
       address _positionRouter
-    ) public {
+    ) {
         require(_priceDuration <= MAX_PRICE_DURATION, "FastPriceFeed: invalid _priceDuration");
         priceDuration = _priceDuration;
         maxPriceUpdateDelay = _maxPriceUpdateDelay;

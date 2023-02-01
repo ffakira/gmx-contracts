@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 
-import "../libraries/math/SafeMath.sol";
-import "../libraries/token/IERC20.sol";
-import "../libraries/token/SafeERC20.sol";
-import "../libraries/utils/ReentrancyGuard.sol";
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "./interfaces/IVault.sol";
 import "./interfaces/IGlpManager.sol";
@@ -11,8 +13,6 @@ import "./interfaces/IShortsTracker.sol";
 import "../tokens/interfaces/IUSDG.sol";
 import "../tokens/interfaces/IMintable.sol";
 import "../access/Governable.sol";
-
-pragma solidity 0.6.12;
 
 contract GlpManager is ReentrancyGuard, Governable, IGlpManager {
     using SafeMath for uint256;
@@ -39,27 +39,7 @@ contract GlpManager is ReentrancyGuard, Governable, IGlpManager {
     uint256 public shortsTrackerAveragePriceWeight;
     mapping (address => bool) public isHandler;
 
-    event AddLiquidity(
-        address account,
-        address token,
-        uint256 amount,
-        uint256 aumInUsdg,
-        uint256 glpSupply,
-        uint256 usdgAmount,
-        uint256 mintAmount
-    );
-
-    event RemoveLiquidity(
-        address account,
-        address token,
-        uint256 glpAmount,
-        uint256 aumInUsdg,
-        uint256 glpSupply,
-        uint256 usdgAmount,
-        uint256 amountOut
-    );
-
-    constructor(address _vault, address _usdg, address _glp, address _shortsTracker, uint256 _cooldownDuration) public {
+    constructor(address _vault, address _usdg, address _glp, address _shortsTracker, uint256 _cooldownDuration) {
         gov = msg.sender;
         vault = IVault(_vault);
         usdg = _usdg;

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-import "../libraries/math/SafeMath.sol";
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "../access/Governable.sol";
 import "../core/interfaces/IShortsTracker.sol";
-
-pragma solidity 0.6.12;
 
 contract ShortsTrackerTimelock {
     using SafeMath for uint256;
@@ -49,7 +49,7 @@ contract ShortsTrackerTimelock {
         uint256 _buffer,
         uint256 _averagePriceUpdateDelay,
         uint256 _maxAveragePriceChange
-    ) public {
+    ) {
         admin = _admin;
         buffer = _buffer;
         averagePriceUpdateDelay = _averagePriceUpdateDelay;

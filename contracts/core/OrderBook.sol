@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
-import "../libraries/math/SafeMath.sol";
-import "../libraries/token/IERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "../tokens/interfaces/IWETH.sol";
-import "../libraries/token/SafeERC20.sol";
-import "../libraries/utils/Address.sol";
-import "../libraries/utils/ReentrancyGuard.sol";
 
 import "./interfaces/IRouter.sol";
 import "./interfaces/IVault.sol";
@@ -71,168 +71,12 @@ contract OrderBook is ReentrancyGuard, IOrderBook {
     uint256 public minPurchaseTokenAmountUsd;
     bool public isInitialized = false;
 
-    event CreateIncreaseOrder(
-        address indexed account,
-        uint256 orderIndex,
-        address purchaseToken,
-        uint256 purchaseTokenAmount,
-        address collateralToken,
-        address indexToken,
-        uint256 sizeDelta,
-        bool isLong,
-        uint256 triggerPrice,
-        bool triggerAboveThreshold,
-        uint256 executionFee
-    );
-    event CancelIncreaseOrder(
-        address indexed account,
-        uint256 orderIndex,
-        address purchaseToken,
-        uint256 purchaseTokenAmount,
-        address collateralToken,
-        address indexToken,
-        uint256 sizeDelta,
-        bool isLong,
-        uint256 triggerPrice,
-        bool triggerAboveThreshold,
-        uint256 executionFee
-    );
-    event ExecuteIncreaseOrder(
-        address indexed account,
-        uint256 orderIndex,
-        address purchaseToken,
-        uint256 purchaseTokenAmount,
-        address collateralToken,
-        address indexToken,
-        uint256 sizeDelta,
-        bool isLong,
-        uint256 triggerPrice,
-        bool triggerAboveThreshold,
-        uint256 executionFee,
-        uint256 executionPrice
-    );
-    event UpdateIncreaseOrder(
-        address indexed account,
-        uint256 orderIndex,
-        address collateralToken,
-        address indexToken,
-        bool isLong,
-        uint256 sizeDelta,
-        uint256 triggerPrice,
-        bool triggerAboveThreshold
-    );
-    event CreateDecreaseOrder(
-        address indexed account,
-        uint256 orderIndex,
-        address collateralToken,
-        uint256 collateralDelta,
-        address indexToken,
-        uint256 sizeDelta,
-        bool isLong,
-        uint256 triggerPrice,
-        bool triggerAboveThreshold,
-        uint256 executionFee
-    );
-    event CancelDecreaseOrder(
-        address indexed account,
-        uint256 orderIndex,
-        address collateralToken,
-        uint256 collateralDelta,
-        address indexToken,
-        uint256 sizeDelta,
-        bool isLong,
-        uint256 triggerPrice,
-        bool triggerAboveThreshold,
-        uint256 executionFee
-    );
-    event ExecuteDecreaseOrder(
-        address indexed account,
-        uint256 orderIndex,
-        address collateralToken,
-        uint256 collateralDelta,
-        address indexToken,
-        uint256 sizeDelta,
-        bool isLong,
-        uint256 triggerPrice,
-        bool triggerAboveThreshold,
-        uint256 executionFee,
-        uint256 executionPrice
-    );
-    event UpdateDecreaseOrder(
-        address indexed account,
-        uint256 orderIndex,
-        address collateralToken,
-        uint256 collateralDelta,
-        address indexToken,
-        uint256 sizeDelta,
-        bool isLong,
-        uint256 triggerPrice,
-        bool triggerAboveThreshold
-    );
-    event CreateSwapOrder(
-        address indexed account,
-        uint256 orderIndex,
-        address[] path,
-        uint256 amountIn,
-        uint256 minOut,
-        uint256 triggerRatio,
-        bool triggerAboveThreshold,
-        bool shouldUnwrap,
-        uint256 executionFee
-    );
-    event CancelSwapOrder(
-        address indexed account,
-        uint256 orderIndex,
-        address[] path,
-        uint256 amountIn,
-        uint256 minOut,
-        uint256 triggerRatio,
-        bool triggerAboveThreshold,
-        bool shouldUnwrap,
-        uint256 executionFee
-    );
-    event UpdateSwapOrder(
-        address indexed account,
-        uint256 ordexIndex,
-        address[] path,
-        uint256 amountIn,
-        uint256 minOut,
-        uint256 triggerRatio,
-        bool triggerAboveThreshold,
-        bool shouldUnwrap,
-        uint256 executionFee
-    );
-    event ExecuteSwapOrder(
-        address indexed account,
-        uint256 orderIndex,
-        address[] path,
-        uint256 amountIn,
-        uint256 minOut,
-        uint256 amountOut,
-        uint256 triggerRatio,
-        bool triggerAboveThreshold,
-        bool shouldUnwrap,
-        uint256 executionFee
-    );
-
-    event Initialize(
-        address router,
-        address vault,
-        address weth,
-        address usdg,
-        uint256 minExecutionFee,
-        uint256 minPurchaseTokenAmountUsd
-    );
-    event UpdateMinExecutionFee(uint256 minExecutionFee);
-    event UpdateMinPurchaseTokenAmountUsd(uint256 minPurchaseTokenAmountUsd);
-    event UpdateGov(address gov);
-
     modifier onlyGov() {
         require(msg.sender == gov, "OrderBook: forbidden");
         _;
     }
 
-    constructor() public {
+    constructor() {
         gov = msg.sender;
     }
 
@@ -393,10 +237,10 @@ contract OrderBook is ReentrancyGuard, IOrderBook {
         delete swapOrders[msg.sender][_orderIndex];
 
         if (order.path[0] == weth) {
-            _transferOutETH(order.executionFee.add(order.amountIn), msg.sender);
+            _transferOutETH(order.executionFee.add(order.amountIn), payable(msg.sender));
         } else {
             IERC20(order.path[0]).safeTransfer(msg.sender, order.amountIn);
-            _transferOutETH(order.executionFee, msg.sender);
+            _transferOutETH(order.executionFee, payable(msg.sender));
         }
 
         emit CancelSwapOrder(
@@ -710,10 +554,10 @@ contract OrderBook is ReentrancyGuard, IOrderBook {
         delete increaseOrders[msg.sender][_orderIndex];
 
         if (order.purchaseToken == weth) {
-            _transferOutETH(order.executionFee.add(order.purchaseTokenAmount), msg.sender);
+            _transferOutETH(order.executionFee.add(order.purchaseTokenAmount), payable(msg.sender));
         } else {
             IERC20(order.purchaseToken).safeTransfer(msg.sender, order.purchaseTokenAmount);
-            _transferOutETH(order.executionFee, msg.sender);
+            _transferOutETH(order.executionFee, payable(msg.sender));
         }
 
         emit CancelIncreaseOrder(
@@ -899,7 +743,7 @@ contract OrderBook is ReentrancyGuard, IOrderBook {
         require(order.account != address(0), "OrderBook: non-existent order");
 
         delete decreaseOrders[msg.sender][_orderIndex];
-        _transferOutETH(order.executionFee, msg.sender);
+        _transferOutETH(order.executionFee, payable(msg.sender));
 
         emit CancelDecreaseOrder(
             order.account,

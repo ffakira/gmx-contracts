@@ -2,10 +2,12 @@
 
 import "../ShortsTracker.sol";
 
-pragma solidity 0.6.12;
+pragma solidity ^0.8.0;
 
 contract ShortsTrackerTest is ShortsTracker {
-    constructor(address _vault) public ShortsTracker(_vault) {}
+    using SafeMath for uint256;
+
+    constructor(address _vault) ShortsTracker(_vault) {}
 
     function getNextGlobalShortDataWithRealisedPnl(
        address _indexToken,

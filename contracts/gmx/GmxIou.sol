@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.12;
+pragma solidity ^0.8.0;
 
-import "../libraries/token/IERC20.sol";
-import "../libraries/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "./interfaces/IGmxIou.sol";
 
@@ -19,7 +19,7 @@ contract GmxIou is IERC20, IGmxIou {
 
     address public minter;
 
-    constructor (address _minter, string memory _name, string memory _symbol) public {
+    constructor (address _minter, string memory _name, string memory _symbol) {
         name = _name;
         symbol = _symbol;
         minter = _minter;
@@ -37,7 +37,7 @@ contract GmxIou is IERC20, IGmxIou {
     }
 
     // empty implementation, GmxIou tokens are non-transferrable
-    function transfer(address /* recipient */, uint256 /* amount */) public override returns (bool) {
+    function transfer(address /* recipient */, uint256 /* amount */) public pure override returns (bool) {
         revert("GmxIou: non-transferrable");
     }
 

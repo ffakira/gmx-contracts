@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 
-import "../libraries/math/SafeMath.sol";
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "./interfaces/IVaultPriceFeed.sol";
 import "../oracle/interfaces/IPriceFeed.sol";
 import "../oracle/interfaces/ISecondaryPriceFeed.sol";
 import "../oracle/interfaces/IChainlinkFlags.sol";
 import "../amm/interfaces/IPancakePair.sol";
-
-pragma solidity 0.6.12;
 
 contract VaultPriceFeed is IVaultPriceFeed {
     using SafeMath for uint256;
@@ -61,7 +61,7 @@ contract VaultPriceFeed is IVaultPriceFeed {
         _;
     }
 
-    constructor() public {
+    constructor() {
         gov = msg.sender;
     }
 
